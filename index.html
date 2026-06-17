@@ -1,0 +1,3146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JETSET Portfolio Dashboard · System4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root {
+    --s4-blue: #0064AA;
+    --s4-blue-deep: #00497d;
+    --s4-blue-light: #1c83cf;
+    --s4-red: #C81E28;
+    --s4-red-soft: #fef2f3;
+    --s4-gray: #5A5B5D;
+    --s4-navy: #002847;
+
+    --bg: #f4f6fa;
+    --bg-card: #ffffff;
+    --bg-panel: #ffffff;
+    --ink: #0c1424;
+    --ink-soft: #5a6275;
+    --ink-faint: #8a92a5;
+    --border: #e6e9f0;
+    --border-strong: #d3d8e3;
+
+    --healthy: #00a86b;
+    --healthy-soft: #e8f7ef;
+    --watch: #f4a300;
+    --watch-soft: #fff7e1;
+    --critical: var(--s4-red);
+    --critical-soft: #fef2f3;
+
+    --shadow-xs: 0 1px 2px rgba(10,20,40,0.04);
+    --shadow-sm: 0 1px 4px rgba(10,20,40,0.06);
+    --shadow-md: 0 4px 20px rgba(10,20,40,0.06), 0 1px 3px rgba(10,20,40,0.04);
+    --shadow-lg: 0 18px 50px rgba(10,20,40,0.18);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; }
+
+  /* ============== TOP NAV ============== */
+  .top-nav {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+    box-shadow: var(--shadow-xs);
+  }
+  .top-nav::after {
+    content: '';
+    position: absolute; left: 0; right: 0; bottom: -3px; height: 3px;
+    background: linear-gradient(90deg, var(--s4-red) 0%, var(--s4-red) 50%, var(--s4-blue) 50%, var(--s4-blue) 100%);
+  }
+  .brand-area { display: flex; align-items: center; gap: 16px; }
+  .brand-logo { height: 36px; width: auto; }
+  .brand-divider { width: 1px; height: 28px; background: var(--border); }
+  .brand-context { display: flex; flex-direction: column; line-height: 1.15; }
+  .brand-context .client { font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600; margin-bottom: 4px; }
+  .jetset-chip {
+    background: var(--s4-navy);
+    border-radius: 6px;
+    padding: 6px 12px;
+    display: inline-flex; align-items: center;
+    box-shadow: 0 1px 3px rgba(0,40,71,0.18);
+  }
+  .jetset-chip-logo {
+    height: 22px; width: auto; display: block;
+  }
+
+  .nav-right { display: flex; align-items: center; gap: 16px; font-size: 13px; }
+  .nav-period {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-weight: 600; color: var(--ink-soft); cursor: pointer;
+  }
+  .nav-period svg { opacity: 0.6; }
+  .nav-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--s4-blue), var(--s4-blue-deep));
+    color: white; font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ============== LAYOUT ============== */
+  main {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 28px;
+  }
+  .page-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-bottom: 24px;
+  }
+  .page-header h1 {
+    font-size: 28px; font-weight: 800; letter-spacing: -0.02em;
+    color: var(--s4-navy); line-height: 1.1;
+  }
+  .page-header .eyebrow {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.15em; color: var(--s4-red); margin-bottom: 6px;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .page-header .eyebrow::before {
+    content: ''; width: 20px; height: 2px; background: var(--s4-red);
+  }
+  .page-header .sub {
+    color: var(--ink-soft); font-size: 14px; margin-top: 4px;
+  }
+  .header-meta { text-align: right; color: var(--ink-faint); font-size: 12px; line-height: 1.6; }
+  .header-meta strong { color: var(--ink); font-weight: 600; }
+
+  /* ============== KPI STRIP ============== */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .kpi {
+    background: white;
+    border-radius: 14px;
+    padding: 22px 24px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-xs);
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--ink-soft); font-weight: 600;
+  }
+  .kpi-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px; line-height: 1;
+    color: var(--s4-navy); margin-top: 8px;
+    letter-spacing: 0.01em;
+  }
+  .kpi-meta {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px;
+    font-size: 12px; color: var(--ink-soft);
+  }
+  .kpi-trend {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 8px; border-radius: 100px;
+    font-size: 11px; font-weight: 700;
+  }
+  .kpi-trend.up { background: var(--healthy-soft); color: var(--healthy); }
+  .kpi-trend.down { background: var(--critical-soft); color: var(--critical); }
+  .kpi-trend.flat { background: #f0f2f7; color: var(--ink-soft); }
+  .kpi .accent-bar {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  }
+  .kpi.critical .accent-bar { background: var(--s4-red); }
+  .kpi.healthy .accent-bar { background: var(--healthy); }
+  .kpi.info .accent-bar { background: var(--s4-blue); }
+  .kpi.neutral .accent-bar { background: var(--ink-faint); }
+
+  /* ============== TWO-COLUMN GRID ============== */
+  .grid-2col {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 1100px) {
+    .grid-2col { grid-template-columns: 1fr; }
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ============== PANEL ============== */
+  .panel {
+    background: white;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .panel-title {
+    font-size: 14px; font-weight: 700; color: var(--s4-navy);
+    letter-spacing: -0.005em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .panel-title .badge-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    padding: 2px 8px; background: var(--bg);
+    border-radius: 100px; color: var(--ink-soft);
+  }
+  .panel-action {
+    font-size: 12px; color: var(--s4-blue); font-weight: 600;
+    cursor: pointer; text-decoration: none;
+  }
+  .panel-action:hover { text-decoration: underline; }
+  .panel-body { padding: 18px 22px; }
+  .panel-body.no-pad { padding: 0; }
+
+  /* ============== US MAP ============== */
+  .methodology-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+  }
+  @media (max-width: 1100px) {
+    .methodology-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .method-card {
+    background: white;
+    padding: 18px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .method-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-soft);
+  }
+  .method-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .method-range {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px; line-height: 1;
+    color: var(--s4-navy);
+    letter-spacing: 0.01em;
+  }
+  .method-pct { font-size: 18px; color: var(--ink-faint); margin-left: 2px; }
+  .method-desc {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  .method-card.method-healthy { border-top: 3px solid var(--healthy); }
+  .method-card.method-watch { border-top: 3px solid var(--watch); }
+  .method-card.method-critical { border-top: 3px solid var(--critical); }
+  .method-card.method-note { border-top: 3px solid var(--s4-navy); background: #fbfcfe; }
+  .method-footer {
+    padding: 12px 22px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--ink-soft);
+    background: #fbfcfe;
+  }
+  .method-footer strong { color: var(--ink); font-weight: 600; }
+
+  .map-wrap {
+    padding: 0;
+    height: 480px;
+    position: relative;
+    overflow: hidden;
+  }
+  #leafletMap {
+    width: 100%;
+    height: 100%;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    background: #f4f6fa;
+  }
+  /* Leaflet marker custom styling */
+  .jetset-marker {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.12s;
+  }
+  .jetset-marker:hover { transform: scale(1.4); }
+  .jetset-marker.healthy { background: #00a86b; }
+  .jetset-marker.watch { background: #f4a300; }
+  .jetset-marker.critical { background: #C81E28; }
+  .jetset-marker.notinspected { background: #cbd0db; }
+  .jetset-marker-pulse {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2px solid white;
+    cursor: pointer;
+    background: #C81E28;
+    position: relative;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  /* The pulsing ring is a separate ::before pseudo-element so it can expand
+     beyond the marker without being clipped by Leaflet's icon container */
+  .jetset-marker-pulse::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: rgba(200, 30, 40, 0.55);
+    transform: translate(-50%, -50%);
+    animation: pulse-marker 1.8s infinite ease-out;
+    z-index: -1;
+  }
+  @keyframes pulse-marker {
+    0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.7; }
+    70%  { transform: translate(-50%, -50%) scale(3);   opacity: 0; }
+    100% { transform: translate(-50%, -50%) scale(3);   opacity: 0; }
+  }
+  /* Ensure the pulse ring isn't clipped by Leaflet's icon container */
+  .leaflet-marker-icon { overflow: visible !important; }
+  /* Leaflet popup branding */
+  .leaflet-popup-content-wrapper {
+    border-radius: 10px;
+    box-shadow: 0 6px 24px rgba(10,20,40,0.18);
+  }
+  .leaflet-popup-content {
+    margin: 14px 18px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .leaflet-popup-content strong { color: var(--s4-navy); font-weight: 700; font-size: 14px; }
+  .map-popup-score {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 4px;
+  }
+
+
+  .map-legend {
+    display: flex; gap: 16px; padding: 0 22px 18px;
+    font-size: 12px; color: var(--ink-soft);
+  }
+  .map-legend-item { display: flex; align-items: center; gap: 6px; }
+  .map-legend-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+
+  /* ============== CRITICAL ALERTS ============== */
+  .alert-list { max-height: 420px; overflow-y: auto; }
+  .alert-item {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s, opacity 0.2s;
+  }
+  .alert-item:hover { background: #fbfcfe; }
+  .alert-item.alert-acknowledged {
+    opacity: 0.55;
+    background: #fbfcfe;
+  }
+  .alert-item.alert-acknowledged:hover { opacity: 0.75; }
+  .alert-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .alert-ack-btn {
+    padding: 4px 10px;
+    background: white;
+    border: 1px solid var(--border-strong);
+    color: var(--ink-soft);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.12s;
+  }
+  .alert-ack-btn:hover {
+    background: var(--s4-blue);
+    color: white;
+    border-color: var(--s4-blue);
+  }
+  .alert-pulse-muted {
+    background: var(--ink-faint) !important;
+    animation: none !important;
+    box-shadow: none !important;
+  }
+  .alert-item:last-child { border-bottom: none; }
+  .alert-pulse {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--s4-red);
+    margin-top: 6px;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 0 rgba(200,30,40,0.6);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(200,30,40,0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(200,30,40,0); }
+    100% { box-shadow: 0 0 0 0 rgba(200,30,40,0); }
+  }
+  .alert-content { flex: 1; min-width: 0; }
+  .alert-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .alert-meta { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .alert-tag {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 2px 7px;
+    background: var(--critical-soft); color: var(--critical);
+    border-radius: 4px; margin-right: 6px;
+  }
+  .alert-age {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--ink-faint); white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* ============== STATUS PILL ============== */
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 100px;
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+  .pill.healthy { background: var(--healthy-soft); color: var(--healthy); }
+  .pill.healthy::before { background: var(--healthy); }
+  .pill.watch { background: var(--watch-soft); color: #946000; }
+  .pill.watch::before { background: var(--watch); }
+  .pill.critical { background: var(--critical-soft); color: var(--critical); }
+  .pill.critical::before { background: var(--critical); }
+
+  /* ============== LOCATIONS TABLE ============== */
+  .table-controls {
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 12px; align-items: center;
+    background: #fbfcfe;
+  }
+  .search-input {
+    flex: 1; padding: 8px 12px 8px 36px;
+    border: 1px solid var(--border); border-radius: 8px;
+    font-family: inherit; font-size: 13px;
+    background: white;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a92a5' stroke-width='2'><circle cx='11' cy='11' r='8'/><path d='m21 21-4.3-4.3'/></svg>");
+    background-repeat: no-repeat; background-position: 12px center;
+  }
+  .filter-chip {
+    padding: 7px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: white;
+    font-size: 12px; font-weight: 600; color: var(--ink-soft);
+    cursor: pointer; font-family: inherit;
+  }
+  .filter-chip.active { border-color: var(--s4-blue); color: var(--s4-blue); background: #f0f6fc; }
+  .filter-chip:hover:not(.active) { background: var(--bg); }
+
+  .data-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px;
+  }
+  .data-table thead th {
+    text-align: left;
+    padding: 11px 22px;
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    border-bottom: 1px solid var(--border);
+    background: #fbfcfe;
+    white-space: nowrap;
+  }
+  .data-table thead th.right { text-align: right; }
+  .data-table thead th .sort-arrow { color: var(--s4-blue); margin-left: 4px; }
+  .data-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .data-table tbody tr:hover { background: #fbfcfe; }
+  .data-table tbody tr:last-child { border-bottom: none; }
+  .data-table tbody td {
+    padding: 14px 22px;
+    vertical-align: middle;
+  }
+  .data-table tbody td.right { text-align: right; }
+  .table-location { font-weight: 600; color: var(--ink); }
+  .table-location-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+  .table-state {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    font-weight: 600; color: var(--ink-soft);
+    background: var(--bg); padding: 2px 6px; border-radius: 4px;
+  }
+  .table-score {
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px;
+    line-height: 1; color: var(--s4-navy);
+  }
+  .table-score.low { color: var(--critical); }
+  .table-fails { color: var(--ink-soft); font-size: 12px; }
+  .table-fails.has { color: var(--critical); font-weight: 600; }
+  /* Report Sent column pill — compact, scannable */
+  .report-sent-pill {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .report-sent-pill.sent {
+    background: var(--healthy-soft, #d3f0e1);
+    color: var(--healthy, #00824a);
+  }
+  .report-sent-pill.pending {
+    background: #fff4d6;
+    color: #8a6500;
+  }
+
+  /* ============== TREND CHART ============== */
+  .trend-chart {
+    padding: 22px;
+    height: 260px;
+  }
+  .trend-chart svg { width: 100%; height: 100%; }
+  .trend-axis text {
+    fill: var(--ink-faint); font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .trend-line { fill: none; stroke: var(--s4-blue); stroke-width: 2.5; }
+  .trend-area { fill: url(#trendGradient); }
+  .trend-dot { fill: white; stroke: var(--s4-blue); stroke-width: 2.5; }
+  .trend-grid line { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2,3; }
+
+  /* ============== ACTIVITY FEED ============== */
+  .activity-list { padding: 4px 0; }
+  .activity-item {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--border);
+  }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-dot {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .activity-dot.healthy { background: var(--healthy-soft); }
+  .activity-dot.watch { background: var(--watch-soft); }
+  .activity-dot.critical { background: var(--critical-soft); }
+  .activity-content { flex: 1; min-width: 0; font-size: 13px; }
+  .activity-content strong { font-weight: 600; }
+  .activity-meta { font-size: 11px; color: var(--ink-faint); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+  /* ============== DRILL-IN MODAL ============== */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0, 40, 71, 0.5);
+    backdrop-filter: blur(6px);
+    z-index: 10000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: auto; }
+  .modal {
+    background: white; border-radius: 16px;
+    max-width: 880px; width: 100%;
+    max-height: 90vh; overflow: hidden;
+    display: flex; flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(20px);
+    transition: transform 0.25s;
+  }
+  .modal-overlay.show .modal { transform: translateY(0); }
+  .modal-header {
+    padding: 24px 28px;
+    background: linear-gradient(135deg, var(--s4-navy), var(--s4-blue));
+    color: white;
+    position: relative;
+  }
+  .modal-header::before {
+    content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px;
+    background: var(--s4-red);
+  }
+  .modal-close {
+    position: absolute; top: 16px; right: 16px;
+    width: 32px; height: 32px; border-radius: 8px;
+    background: rgba(255,255,255,0.15); border: none;
+    color: white; font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.25); }
+  .modal-eyebrow { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.85; font-weight: 600; }
+  .modal-title { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; margin-top: 6px; }
+  .modal-id { font-family: 'JetBrains Mono', monospace; font-size: 12px; opacity: 0.7; margin-top: 4px; }
+
+  .modal-summary {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-summary > div {
+    padding: 18px 20px;
+    border-right: 1px solid var(--border);
+  }
+  .modal-summary > div:last-child { border-right: none; }
+  .modal-summary .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); font-weight: 600; }
+  .modal-summary .value { font-family: 'Bebas Neue', sans-serif; font-size: 28px; line-height: 1; color: var(--s4-navy); margin-top: 4px; }
+  .modal-summary .value.critical { color: var(--critical); }
+
+  .modal-body { overflow-y: auto; padding: 24px 28px; }
+  .modal-section-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--ink-soft); margin-bottom: 14px;
+  }
+
+  /* Photo grid in modal */
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  .photo-thumb {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    aspect-ratio: 4 / 3;
+    background: var(--bg);
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  .photo-thumb:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  .photo-thumb img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .photo-thumb-label {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(to top, rgba(0,40,71,0.88), rgba(0,40,71,0));
+    color: white;
+    padding: 14px 10px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex; flex-direction: column; gap: 1px;
+  }
+  /* Lightbox */
+  .photo-lightbox {
+    position: fixed; inset: 0;
+    background: rgba(0, 20, 40, 0.92);
+    z-index: 20000;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+    padding: 40px;
+  }
+  .photo-lightbox.show { opacity: 1; pointer-events: auto; }
+  .photo-lightbox img {
+    max-width: 90%; max-height: 78vh;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    object-fit: contain;
+  }
+  .photo-lightbox-caption {
+    color: white; margin-top: 16px; font-size: 14px; font-weight: 600;
+    text-align: center;
+  }
+  .photo-lightbox-caption .sub {
+    font-weight: 400; opacity: 0.7; font-size: 12px; margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .photo-lightbox-close {
+    position: absolute; top: 24px; right: 28px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(255,255,255,0.15); border: none;
+    color: white; font-size: 24px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-lightbox-close:hover { background: rgba(255,255,255,0.28); }
+  .photo-lightbox-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 48px; height: 48px; border-radius: 50%;
+    background: rgba(255,255,255,0.15); border: none;
+    color: white; font-size: 24px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-lightbox-nav:hover { background: rgba(255,255,255,0.28); }
+  .photo-lightbox-nav.prev { left: 24px; }
+  .photo-lightbox-nav.next { right: 24px; }
+  .photo-lightbox-open-full {
+    color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 10px;
+    text-decoration: underline; cursor: pointer;
+  }
+
+  .reformer-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .reformer-tile {
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; text-align: center;
+    cursor: pointer;
+    transition: all 0.12s;
+    position: relative;
+    overflow: hidden;
+  }
+  .reformer-tile:hover { border-color: var(--s4-blue); transform: translateY(-1px); }
+  .reformer-tile .num { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--ink-soft); }
+  .reformer-tile .score { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--s4-navy); margin: 4px 0; }
+  .reformer-tile.healthy { background: var(--healthy-soft); border-color: #c8eed8; }
+  .reformer-tile.watch { background: var(--watch-soft); border-color: #ffe39c; }
+  .reformer-tile.critical { background: var(--critical-soft); border-color: #fac9cd; }
+  .reformer-tile.critical .score { color: var(--critical); }
+
+  .quarterly-history {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .quarter-card {
+    background: var(--bg); border-radius: 10px;
+    padding: 14px;
+    border: 1px solid var(--border);
+  }
+  .quarter-card .q-label { font-size: 11px; color: var(--ink-soft); font-weight: 600; letter-spacing: 0.05em; }
+  .quarter-card .q-score { font-family: 'Bebas Neue', sans-serif; font-size: 28px; line-height: 1; color: var(--s4-navy); margin-top: 4px; }
+  .quarter-card.current { border-color: var(--s4-blue); background: white; box-shadow: var(--shadow-sm); }
+  .quarter-card.current .q-label { color: var(--s4-blue); }
+
+  /* ============== FOOTER ============== */
+  footer {
+    text-align: center; padding: 28px 16px 40px;
+    color: var(--ink-faint); font-size: 11px;
+    letter-spacing: 0.05em;
+  }
+  footer strong { color: var(--s4-blue); font-weight: 700; }
+
+  /* SCROLLBARS */
+  .alert-list::-webkit-scrollbar, .modal-body::-webkit-scrollbar { width: 8px; }
+  .alert-list::-webkit-scrollbar-thumb, .modal-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+
+  /* DEMO BANNER */
+  .demo-banner {
+    background: linear-gradient(90deg, #fff7e1, #fef2f3);
+    border-bottom: 1px solid var(--watch);
+    padding: 8px 28px;
+    font-size: 12px; color: #946000;
+    text-align: center; font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .demo-banner strong { color: #7a4f00; }
+</style>
+</head>
+<body>
+
+<div class="demo-banner">
+  📊 <strong>Mockup Preview</strong> — This dashboard displays sample data for design review purposes. Live data integration begins in Phase 2.
+</div>
+
+<!-- ========== TOP NAV ========== -->
+<nav class="top-nav">
+  <div class="brand-area">
+    <img class="brand-logo" alt="System4" src="data:image/webp;base64,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" />
+    <div class="brand-divider"></div>
+    <div class="jetset-chip">
+        <img class="jetset-chip-logo" alt="JETSET Pilates" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4gPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iMjM3LjAzNCIgaGVpZ2h0PSI2OC4zNTIiIHZpZXdCb3g9IjAgMCAyMzcuMDM0IDY4LjM1MiI+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cmVjdCB3aWR0aD0iMjM3LjAzNCIgaGVpZ2h0PSI2OC4zNTIiIGZpbGw9IiNmZmYiPjwvcmVjdD48L2NsaXBQYXRoPjwvZGVmcz48ZyBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGQ9Ik0zNC4xNzYsMEEzNC4xNzYsMzQuMTc2LDAsMSwxLDAsMzQuMTc2LDM0LjE3NiwzNC4xNzYsMCwwLDEsMzQuMTc2LDBtMCw0LjY0NUEyOS41MzEsMjkuNTMxLDAsMSwxLDQuNjQ1LDM0LjE3NiwyOS41MzEsMjkuNTMxLDAsMCwxLDM0LjE3Niw0LjY0NSIgZmlsbD0iI2ZmZiIgZmlsbC1ydWxlPSJldmVub2RkIj48L3BhdGg+PHBhdGggZD0iTTcxLDIzLjk3NWg0LjcxOFY0Ni4xNDRINTIuNjU3VjM2LjUzM2g0LjcxOHY1LjQ0Mkg3MVpNNTIuNjU3LDcxLjcwNmg0LjcxOFY1My4yNzZoNC40NTRWNjUuNTNoNC43MThWNTMuMjc2SDcxdjYuMzYzaDQuNzE4VjQ5LjEwN0g1Mi42NTdaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMzAuMDExIC0xMy42NjQpIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjwvcGF0aD48cGF0aCBkPSJNMTk4LjE2MSw1MS40ODdjNi40MzksMCw5Ljg3OC0zLjI5Myw5Ljg3OC05Ljk1MlYyNS4zNjRIMTkyLjAxNHY1LjZoOC44NTRWNDEuOTc0YzAsMi40NTEtMS4xMzQsMy43MzItMy4yMTksMy43MzItMS42NDcsMC0zLjA3My0uOTE1LTQuNDI3LTIuNjcxbC0zLjk1MSw0LjY4M2MxLjk3NiwyLjQ1MSw1LjE1OSwzLjc2OSw4Ljg5MSwzLjc2OW0yNS4wMzktNi4xMVY0MC42OTRoNy43ODdWMzUuMjc5SDIyMy4yVjMwLjk2Mmg0LjU1N3YtNS42SDIxNi4wMjl2MjUuNjFoMjAuNTYydi01LjZabTI1Ljk1NCw1LjZIMjU2LjRWMzEuMTA4aDcuODNWMjUuMzY0aC0yMi45NHY1Ljc0NGg3Ljg2N1ptMjkuOC41MTJjNy42MSwwLDExLjM0MS0zLjgwNSwxMS4zNDEtOC4yNTYsMC05LjQzOS0xNC41MjUtNi41MDYtMTQuNTI1LTEwLjQzMywwLTEuMjg3LDEuMS0yLjMxMSw0LjEzNC0yLjMxMWExNS4wNzMsMTUuMDczLDAsMCwxLDcuMSwxLjk4MmwyLjIzMi01LjM4NGExOS4xOCwxOS4xOCwwLDAsMC05LjI5My0yLjIzMmMtNy42MDksMC0xMS4zNDEsMy43MzItMTEuMzQxLDguMzExLDAsOS41MTgsMTQuNTYxLDYuNTYxLDE0LjU2MSwxMC42MSwwLDEuMjQ0LTEuMTcxLDIuMDc5LTQuMTcxLDIuMDc5YTE2LjIsMTYuMiwwLDAsMS04LjQ1MS0yLjUxMmwtMi4zNzgsNS4zMjljMi40MTUsMS42ODMsNi41ODYsMi44MTcsMTAuNzkzLDIuODE3bTI0LjkyOS02LjExVjQwLjY5NGgxMS4zNzhWMzUuMjc5SDMwMy44NzlWMzAuOTYyaDEyLjkxNXYtNS42SDI5Ni43MDh2MjUuNjFIMzE3LjI3di01LjZabTI1Ljk1NCw1LjZoNy4yNDRWMzEuMTA4aDcuODI5VjI1LjM2NGgtMjIuOTR2NS43NDRoNy44NjZaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMTA3Ljg3MyAtMTQuMTY0KSIgZmlsbD0iI2ZmZiI+PC9wYXRoPjxwYXRoIGQ9Ik0yMDEuNzE3LDExNy41NTNsLS4wMTctMTIuMDk0aC0xLjRsLTQuOTA2LDguNS00Ljk3Ny04LjVoLTEuNHYxMi4wOTRoMS42MzV2LTguNzU5bDQuMzEsNy4yOWguNzg2bDQuMzEtNy4zNDIuMDE3LDguODExWm04Ljk0Ny4xMzhhNi4xODcsNi4xODcsMCwxLDAtNi4zNTEtNi4xODUsNi4wOCw2LjA4LDAsMCwwLDYuMzUxLDYuMTg1bTAtMS41MzhhNC42NDcsNC42NDcsMCwxLDEsNC42MTQtNC42NDcsNC41MTYsNC41MTYsMCwwLDEtNC42MTQsNC42NDdtOC45MjIsMS40aDUuMDIzYzMuODMxLDAsNi40MzYtMi40NTMsNi40MzYtNi4wNDdzLTIuNjA1LTYuMDQ3LTYuNDM2LTYuMDQ3aC01LjAyM1ptMS43LTEuNXYtOS4wODhoMy4yMThjMi45NDUsMCw0LjgzNiwxLjgzMiw0LjgzNiw0LjU0NHMtMS44OSw0LjU0NC00LjgzNiw0LjU0NFptMTQuMDY0LDB2LTMuOWg1Ljk3NnYtMS40NjloLTUuOTc2di0zLjcxNGg2LjcwOHYtMS41SDIzMy42NXYxMi4wOTRoOC42NXYtMS41Wm0xOS41MjksMS41LTIuODI2LTQuMDZhMy44MTMsMy44MTMsMCwwLDAsMi42MjItMy44MThjMC0yLjYyNi0xLjg3My00LjIxNS00Ljk3Mi00LjIxNWgtNC42NDh2MTIuMDk0aDEuN3YtMy42OGgyLjk0NWMuMjU1LDAsLjUxMS0uMDE3Ljc0OS0uMDM0bDIuNTcxLDMuNzE0Wm0tNS4yMjctNS4xNDlIMjQ2Ljc2di01LjQ0MmgyLjg5NGMyLjE4LDAsMy4zMi45ODUsMy4zMiwyLjcxMnMtMS4xNDEsMi43My0zLjMyLDIuNzNtMTYuMzI5LTYuOTQ1djkuMDE4bC03LjE1MS05LjAxOGgtMS40djEyLjA5NGgxLjd2LTkuMDE4bDcuMTUxLDkuMDE4aDEuNFYxMDUuNDU5Wm0xNC41MDcsMGgtNC42NDh2MTIuMDk0aDEuN1YxMTMuODloMi45NDZjMy4xLDAsNC45NzItMS41ODksNC45NzItNC4yMTVzLTEuODczLTQuMjE1LTQuOTcyLTQuMjE1bS0uMDUyLDYuOTI4aC0yLjg5NHYtNS40MjVoMi44OTRjMi4xOCwwLDMuMzIuOTg1LDMuMzIsMi43MTJzLTEuMTQxLDIuNzEyLTMuMzIsMi43MTJtNy41MjYsNS4xNjZoMS43VjEwNS40NTloLTEuN1ptNS4yNzgsMEgzMDEuNHYtMS41aC02LjQ1M1YxMDUuNDU5aC0xLjdabTE5LjA3LDBIMzE0LjFsLTUuNDE0LTEyLjA5NEgzMDdsLTUuNCwxMi4wOTRoMS43NTRsMS4zMTEtMy4wMjRIMzExWm0tNy4wNDktNC40MDYsMi41NzEtNS45MjUsMi41NzEsNS45MjVabTEyLjM3OCw0LjQwNmgxLjY4NVYxMDYuOTYyaDQuMDg3di0xLjVoLTkuODU5djEuNWg0LjA4NlptOS4zMzEtMS41di0zLjloNS45Nzd2LTEuNDY5aC01Ljk3N3YtMy43MTRoNi43MDh2LTEuNUgzMjUuMjd2MTIuMDk0aDguNjV2LTEuNVptMTMuMTc5LDEuNjQxYzMuMTUsMCw0LjYxNC0xLjU4OSw0LjYxNC0zLjQzNSwwLTQuNDM3LTcuMjE5LTIuNTg2LTcuMjE5LTUuNTQ2LDAtMS4wNTcuODY5LTEuOTIxLDIuODk1LTEuOTIxYTYuMSw2LjEsMCwwLDEsMy4yNjkuOTg1bC41NjItMS4zODJhNi45MzYsNi45MzYsMCwwLDAtMy44MzEtMS4wNzFjLTMuMTMzLDAtNC41NjMsMS41ODktNC41NjMsMy40NTgsMCw0LjQ5NSw3LjIxOSwyLjYzMiw3LjIxOSw1LjU4LDAsMS4wNTQtLjg4NSwxLjg2My0yLjk0NSwxLjg2M2E2LjA4LDYuMDgsMCwwLDEtMy45MzMtMS40bC0uNjMsMS4zNDVhNy4wMDksNy4wMDksMCwwLDAsNC41NjMsMS41MiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTEwNy43MzIgLTYwLjAyNykiIGZpbGw9IiNmZmYiPjwvcGF0aD48L2c+PC9zdmc+IA==" />
+    </div>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ========== PAGE HEADER ========== -->
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Reformer Inspection Program</div>
+      <h1>Portfolio Health Overview</h1>
+      <div class="sub">Quarterly multi-point inspection results across all open JETSET locations</div>
+    </div>
+    <div class="header-meta">
+      <div>Last sync · <strong>2 min ago</strong></div>
+      <div>Period · <strong>Apr 1 – Jun 30, 2026</strong></div>
+    </div>
+  </div>
+
+  <!-- ========== KPI STRIP ========== -->
+  <div class="kpi-strip">
+    <div class="kpi info">
+      <div class="accent-bar"></div>
+      <div class="kpi-label">Locations Inspected</div>
+      <div class="kpi-value">38<span style="font-size:24px; color:var(--ink-faint);"> / 45</span></div>
+      <div class="kpi-meta">
+        <span class="kpi-trend up">▲ 6</span>
+        <span>vs. prior quarter</span>
+      </div>
+    </div>
+    <div class="kpi neutral">
+      <div class="accent-bar"></div>
+      <div class="kpi-label">Reformers Checked</div>
+      <div class="kpi-value">456</div>
+      <div class="kpi-meta">
+        <span class="mono" style="font-weight:600;">~12 per location</span>
+      </div>
+    </div>
+    <div class="kpi healthy">
+      <div class="accent-bar"></div>
+      <div class="kpi-label">Portfolio Score</div>
+      <div class="kpi-value">91<span style="font-size:24px; color:var(--ink-faint);">%</span></div>
+      <div class="kpi-meta">
+        <span class="kpi-trend up">▲ 2.4 pts</span>
+        <span>vs. prior quarter</span>
+      </div>
+    </div>
+    <div class="kpi critical">
+      <div class="accent-bar"></div>
+      <div class="kpi-label">Critical Issues Open</div>
+      <div class="kpi-value">7</div>
+      <div class="kpi-meta">
+        <span class="kpi-trend down">▲ 2</span>
+        <span>vs. prior quarter</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SCORING METHODOLOGY ========== -->
+  <div class="panel methodology-panel" style="margin-bottom:24px;">
+    <div class="panel-header">
+      <div class="panel-title">How Scoring Works</div>
+      <span style="font-size:12px; color:var(--ink-soft);">Every reformer is evaluated across 7 inspection sections, ~24 individual checkpoints</span>
+    </div>
+    <div class="methodology-grid">
+      <div class="method-card method-healthy">
+        <div class="method-pill"><span class="method-dot" style="background:var(--healthy);"></span>HEALTHY</div>
+        <div class="method-range">90 – 100<span class="method-pct">%</span></div>
+        <div class="method-desc">All critical safety items pass. Minor cosmetic or non-safety issues acceptable.</div>
+      </div>
+      <div class="method-card method-watch">
+        <div class="method-pill"><span class="method-dot" style="background:var(--watch);"></span>WATCH</div>
+        <div class="method-range">75 – 89<span class="method-pct">%</span></div>
+        <div class="method-desc">No safety fails, but multiple non-critical items need attention. Schedule maintenance.</div>
+      </div>
+      <div class="method-card method-critical">
+        <div class="method-pill"><span class="method-dot" style="background:var(--critical);"></span>CRITICAL</div>
+        <div class="method-range">&lt; 75<span class="method-pct">%</span></div>
+        <div class="method-desc">Below threshold <strong>OR</strong> any safety-critical item failed. Take reformer out of service.</div>
+      </div>
+      <div class="method-card method-note">
+        <div class="method-pill"><span style="font-size:14px;">⚑</span> SAFETY-CRITICAL SECTIONS</div>
+        <div class="method-desc" style="margin-top:14px;">
+          A <strong>fail</strong> on any item in <strong>Springs</strong> or <strong>Straps</strong> auto-flags the reformer as Critical regardless of overall score. These are the load-bearing components most likely to cause injury if compromised.
+        </div>
+      </div>
+    </div>
+    <div class="method-footer">
+      <strong>Score formula:</strong> (Passed checkpoints ÷ Applicable checkpoints) × 100. N/A items are excluded from the denominator. Location score is the average of all on-site reformer scores.
+    </div>
+  </div>
+
+  <!-- ========== ROW 1: MAP + CRITICAL ALERTS ========== -->
+  <div class="grid-2col">
+    <!-- US MAP -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Locations Map <span class="badge-count">45</span></div>
+        <a class="panel-action" href="javascript:void(0)" onclick="scrollToLocationsTable()">View as list →</a>
+      </div>
+      <div class="map-wrap">
+        <div id="leafletMap"></div>
+      </div>
+      <div class="map-legend">
+        <div class="map-legend-item"><span class="map-legend-dot" style="background:var(--healthy);"></span> Healthy (90%+)</div>
+        <div class="map-legend-item"><span class="map-legend-dot" style="background:var(--watch);"></span> Watch (75-89%)</div>
+        <div class="map-legend-item"><span class="map-legend-dot" style="background:var(--critical);"></span> Critical (&lt;75% or safety fail)</div>
+        <div class="map-legend-item" style="margin-left:auto;"><span class="map-legend-dot" style="background:#cbd0db;"></span> Not yet inspected</div>
+      </div>
+    </div>
+
+    <!-- CRITICAL ALERTS -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Critical Alerts <span class="badge-count" style="background:var(--critical-soft); color:var(--critical);">7</span></div>
+        <a class="panel-action" href="javascript:void(0)" onclick="exportCriticalAlertsCSV()">Export →</a>
+      </div>
+      <div class="alert-list" id="alertList"></div>
+    </div>
+  </div>
+
+  <!-- ========== ROW 2: LOCATIONS TABLE ========== -->
+  <div class="panel" id="locationsTablePanel" style="margin-bottom:24px;">
+    <div class="panel-header">
+      <div class="panel-title">All Locations <span class="badge-count" id="tableCount">45</span></div>
+      <a class="panel-action" href="javascript:void(0)" onclick="exportLocationsCSV()">Export CSV →</a>
+    </div>
+    <div class="table-controls">
+      <input class="search-input" placeholder="Search locations, cities, or owners..." id="searchInput" />
+      <button class="filter-chip active" data-filter="all">All</button>
+      <button class="filter-chip" data-filter="critical">Critical</button>
+      <button class="filter-chip" data-filter="watch">Watch</button>
+      <button class="filter-chip" data-filter="healthy">Healthy</button>
+      <button class="filter-chip" data-filter="notinspected">Not Inspected</button>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:26%;">Location</th>
+          <th>State</th>
+          <th>Last Inspected</th>
+          <th>Report Sent</th>
+          <th class="right">Reformers</th>
+          <th class="right">Score <span class="sort-arrow">▼</span></th>
+          <th class="right">Failed Items</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="locationsTbody"></tbody>
+    </table>
+  </div>
+
+  <!-- ========== ROW 3: TREND + ACTIVITY ========== -->
+  <div class="grid-2col" style="grid-template-columns: 1.4fr 1fr;">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Portfolio Score Trend</div>
+      </div>
+      <div class="trend-chart">
+        <svg viewBox="0 0 700 240" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0064AA" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#0064AA" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid -->
+          <g class="trend-grid">
+            <line x1="60" y1="40" x2="680" y2="40"/>
+            <line x1="60" y1="90" x2="680" y2="90"/>
+            <line x1="60" y1="140" x2="680" y2="140"/>
+            <line x1="60" y1="190" x2="680" y2="190"/>
+          </g>
+          <!-- Y-axis labels -->
+          <g class="trend-axis">
+            <text x="50" y="44" text-anchor="end">100%</text>
+            <text x="50" y="94" text-anchor="end">90%</text>
+            <text x="50" y="144" text-anchor="end">80%</text>
+            <text x="50" y="194" text-anchor="end">70%</text>
+            <!-- X-axis labels -->
+            <text x="120" y="220" text-anchor="middle">Q3 2025</text>
+            <text x="260" y="220" text-anchor="middle">Q4 2025</text>
+            <text x="400" y="220" text-anchor="middle">Q1 2026</text>
+            <text x="540" y="220" text-anchor="middle">Q2 2026</text>
+            <text x="640" y="220" text-anchor="middle" style="fill:var(--s4-blue); font-weight:600;">Current</text>
+          </g>
+          <!-- Area + Line -->
+          <path d="M 120 130 L 260 115 L 400 105 L 540 95 L 640 78 L 640 200 L 120 200 Z" class="trend-area"/>
+          <path d="M 120 130 L 260 115 L 400 105 L 540 95 L 640 78" class="trend-line"/>
+          <!-- Dots -->
+          <circle cx="120" cy="130" r="5" class="trend-dot"/>
+          <circle cx="260" cy="115" r="5" class="trend-dot"/>
+          <circle cx="400" cy="105" r="5" class="trend-dot"/>
+          <circle cx="540" cy="95" r="5" class="trend-dot"/>
+          <circle cx="640" cy="78" r="6" fill="var(--s4-red)" stroke="white" stroke-width="2.5"/>
+          <!-- Score labels on dots -->
+          <g style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; fill:var(--s4-navy);">
+            <text x="120" y="120" text-anchor="middle">86%</text>
+            <text x="260" y="105" text-anchor="middle">88%</text>
+            <text x="400" y="95" text-anchor="middle">89%</text>
+            <text x="540" y="85" text-anchor="middle">89%</text>
+            <text x="640" y="68" text-anchor="middle" style="fill:var(--s4-red); font-weight:700;">91%</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Recent Activity</div>
+        <a class="panel-action">Full log →</a>
+      </div>
+      <div class="activity-list" id="activityList"></div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Inspection platform delivered by <strong>System4 Facility Services Management</strong> · for <strong style="color: var(--s4-navy);">JETSET Pilates Corporate</strong>
+</footer>
+
+<!-- ========== DRILL-IN MODAL ========== -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" id="modalBody"></div>
+</div>
+
+<div class="photo-lightbox" id="photoLightbox" onclick="closePhotoViewer(event)">
+  <button class="photo-lightbox-close" onclick="closePhotoViewer()">&times;</button>
+  <button class="photo-lightbox-nav prev" onclick="event.stopPropagation(); photoViewerNav(-1)">&#8249;</button>
+  <button class="photo-lightbox-nav next" onclick="event.stopPropagation(); photoViewerNav(1)">&#8250;</button>
+  <img id="photoLightboxImg" src="" alt="" onclick="event.stopPropagation()" />
+  <div class="photo-lightbox-caption" id="photoLightboxCaption"></div>
+</div>
+
+<script>
+/* ============================================================
+   JETSET HQ DASHBOARD — MOCKUP
+   All data is sample data for design review purposes.
+   In Phase 2, this connects to SharePoint Lists via API.
+   ============================================================ */
+
+// ---------- DEMO DATA ----------
+const LOCATIONS = [
+  // CA
+  { id:'JS-CA-001', studio:'Torrey Hills', city:'San Diego', state:'CA', lat:32.95, lng:-117.21, owner:'Frank Auger / Ginna Auger', mapX:103.7, mapY:391.7 },
+  // CO
+  { id:'JS-CO-001', studio:'RiNo', city:'Denver', state:'CO', lat:39.77, lng:-104.99, owner:'Chad Goldfarb / Kelly Hennessy', mapX:339.7, mapY:276.2 },
+  // FL
+  { id:'JS-FL-001', studio:'Aventura', city:'Aventura', state:'FL', lat:25.96, lng:-80.14, owner:'Nicole/Max Di Leo', mapX:806.3, mapY:562.6 },
+  { id:'JS-FL-002', studio:'West Boca', city:'Boca Raton', state:'FL', lat:26.36, lng:-80.18, owner:'Zhana Gali', mapX:804.1, mapY:554.2 },
+  { id:'JS-FL-003', studio:'Merrick Park', city:'Coral Gables', state:'FL', lat:25.74, lng:-80.27, owner:'Andrea / Carlos Ponce', mapX:804.5, mapY:567.8 },
+  { id:'JS-FL-004', studio:'Coral Springs', city:'Coral Springs', state:'FL', lat:26.27, lng:-80.27, owner:'Zhana Gali', mapX:802.6, mapY:556.4 },
+  { id:'JS-FL-005', studio:'Midtown Doral', city:'Doral', state:'FL', lat:25.81, lng:-80.35, owner:'Reyna Gonzalez', mapX:802.7, mapY:566.6 },
+  { id:'JS-FL-006', studio:'Coconut Point', city:'Fort Myers', state:'FL', lat:26.39, lng:-81.81, owner:'Andrea / Carlos Ponce', mapX:771.9, mapY:558.6 },
+  { id:'JS-FL-007', studio:'Flagler Village', city:'Ft. Lauderdale', state:'FL', lat:26.13, lng:-80.13, owner:'Di Leos', mapX:805.9, mapY:559.0 },
+  { id:'JS-FL-008', studio:'Gate Parkway', city:'Jacksonville', state:'FL', lat:30.26, lng:-81.55, owner:'Crystal/Tyler Netherland', mapX:764.1, mapY:473.7 },
+  { id:'JS-FL-009', studio:'Jax Beach', city:'Jacksonville Beach', state:'FL', lat:30.29, lng:-81.39, owner:'Tocco Sisters', mapX:767.0, mapY:472.6 },
+  { id:'JS-FL-010', studio:'Brickell', city:'Miami', state:'FL', lat:25.76, lng:-80.19, owner:'Tamara Galinsky', mapX:806.0, mapY:567.1 },
+  { id:'JS-FL-011', studio:'Coconut Grove', city:'Miami', state:'FL', lat:25.73, lng:-80.24, owner:'Tamara Galinsky', mapX:805.2, mapY:567.9 },
+  { id:'JS-FL-012', studio:'Downtown Miami', city:'Miami', state:'FL', lat:25.77, lng:-80.19, owner:'Darcy Towsley', mapX:806.0, mapY:566.9 },
+  { id:'JS-FL-013', studio:'Edgewater', city:'Miami', state:'FL', lat:25.81, lng:-80.18, owner:'Zhana Gali', mapX:806.1, mapY:566.0 },
+  { id:'JS-FL-014', studio:'North Miami', city:'Miami', state:'FL', lat:25.89, lng:-80.18, owner:'Rosales Sisters', mapX:805.8, mapY:564.3 },
+  { id:'JS-FL-015', studio:'South of Fifth', city:'Miami Beach', state:'FL', lat:25.77, lng:-80.13, owner:'JETSET Franchising', mapX:807.2, mapY:566.7 },
+  { id:'JS-FL-016', studio:'Sunset Harbour', city:'Miami Beach', state:'FL', lat:25.79, lng:-80.14, owner:'Zhana Gali', mapX:806.9, mapY:566.3 },
+  { id:'JS-FL-017', studio:'Dr. Phillips', city:'Orlando', state:'FL', lat:28.45, lng:-81.49, owner:'Kethi / Wolak', mapX:771.3, mapY:513.0 },
+  { id:'JS-FL-018', studio:'Winter Park', city:'Orlando', state:'FL', lat:28.60, lng:-81.34, owner:'Kethi / Wolak', mapX:773.7, mapY:509.3 },
+  { id:'JS-FL-019', studio:'Palm Beach Gardens', city:'Palm Beach Gardens', state:'FL', lat:26.83, lng:-80.14, owner:'Zhana Gali', mapX:803.1, mapY:543.9 },
+  { id:'JS-FL-020', studio:'Carrollwood', city:'Tampa', state:'FL', lat:28.06, lng:-82.49, owner:'Christopher Family', mapX:753.3, mapY:524.3 },
+  { id:'JS-FL-021', studio:'Downtown Tampa', city:'Tampa', state:'FL', lat:27.95, lng:-82.46, owner:'Christopher Family', mapX:754.2, mapY:526.6 },
+  { id:'JS-FL-022', studio:'South Tampa', city:'Tampa', state:'FL', lat:27.93, lng:-82.49, owner:'Christopher Family', mapX:753.7, mapY:527.2 },
+  { id:'JS-FL-023', studio:'Wellington', city:'Wellington', state:'FL', lat:26.66, lng:-80.27, owner:'Nicole / Max Di Leo', mapX:801.2, mapY:548.0 },
+  { id:'JS-FL-024', studio:'West Palm Beach', city:'West Palm Beach', state:'FL', lat:26.71, lng:-80.05, owner:'Zhana Gali', mapX:805.3, mapY:546.2 },
+  { id:'JS-FL-025', studio:'Weston', city:'Weston', state:'FL', lat:26.10, lng:-80.40, owner:'Ricciuti / Di Giovanni', mapX:800.7, mapY:560.5 },
+  // GA
+  { id:'JS-GA-001', studio:'Alpharetta', city:'Alpharetta', state:'GA', lat:34.07, lng:-84.29, owner:'Alford / Peterson', mapX:702.2, mapY:397.1 },
+  // MA
+  { id:'JS-MA-001', studio:'Wellesley', city:'Boston', state:'MA', lat:42.30, lng:-71.29, owner:'Onat / Kumas', mapX:886.2, mapY:175.4 },
+  // NC
+  { id:'JS-NC-001', studio:'Lake Norman', city:'Charlotte', state:'NC', lat:35.41, lng:-80.84, owner:'Logue / Knight', mapX:759.3, mapY:358.9 },
+  { id:'JS-NC-002', studio:'South End', city:'Charlotte', state:'NC', lat:35.21, lng:-80.86, owner:'Logue / Knight', mapX:759.7, mapY:363.3 },
+  { id:'JS-NC-003', studio:'Downtown Raleigh', city:'Raleigh', state:'NC', lat:35.78, lng:-78.64, owner:'Aquilino / Myers', mapX:796.4, mapY:344.1 },
+  { id:'JS-NC-004', studio:'Holly Springs', city:'Raleigh', state:'NC', lat:35.65, lng:-78.83, owner:'Aquilino / Myers', mapX:793.7, mapY:347.6 },
+  { id:'JS-NC-005', studio:'North Hills', city:'Raleigh', state:'NC', lat:35.83, lng:-78.64, owner:'Aquilino / Myers', mapX:796.2, mapY:343.0 },
+  // NJ
+  { id:'JS-NJ-001', studio:'Florham Park', city:'Florham Park', state:'NJ', lat:40.78, lng:-74.39, owner:'Gali / Palmeri', mapX:845.1, mapY:220.4 },
+  { id:'JS-NJ-002', studio:'Montclair', city:'Verona', state:'NJ', lat:40.83, lng:-74.24, owner:'Zhana Gali', mapX:847.3, mapY:218.7 },
+  // NY
+  { id:'JS-NY-001', studio:'Gramercy', city:'New York', state:'NY', lat:40.74, lng:-73.98, owner:'Clonts', mapX:851.9, mapY:219.7 },
+  { id:'JS-NY-002', studio:'SoHo', city:'New York', state:'NY', lat:40.72, lng:-74.00, owner:'Goli Soleimanpour', mapX:851.7, mapY:220.2 },
+  // PA
+  { id:'JS-PA-001', studio:'Graduate Hospital', city:'Philadelphia', state:'PA', lat:39.94, lng:-75.18, owner:'Landskroner / Corrado', mapX:836.4, mapY:241.5 },
+  // TN
+  { id:'JS-TN-001', studio:'Midtown Nashville', city:'Nashville', state:'TN', lat:36.15, lng:-86.79, owner:'Nicole / Alex Di Leo', mapX:652.7, mapY:356.0 },
+  // TX
+  { id:'JS-TX-001', studio:'South Austin', city:'Austin', state:'TX', lat:30.23, lng:-97.83, owner:'Jeff / Ali Radway', mapX:455.7, mapY:494.9 },
+  { id:'JS-TX-002', studio:'Preston Hollow', city:'Dallas', state:'TX', lat:32.88, lng:-96.79, owner:'Kim Greenberg', mapX:475.9, mapY:436.5 },
+  { id:'JS-TX-003', studio:'Heath', city:'Heath', state:'TX', lat:32.84, lng:-96.47, owner:'Christy / Justin Wheat', mapX:481.8, mapY:437.5 },
+  { id:'JS-TX-004', studio:'League City', city:'League City', state:'TX', lat:29.51, lng:-95.10, owner:'LeClaire Family', mapX:507.7, mapY:511.1 },
+  { id:'JS-TX-005', studio:'West McKinney', city:'McKinney', state:'TX', lat:33.20, lng:-96.69, owner:'OLeary Family', mapX:477.8, mapY:429.4 },
+];
+
+// ---------- LIVE DATA FETCH ----------
+// Power Automate endpoint that returns { locations: [...], submissions: [...] }
+// In production this would be authenticated. For prototype/demo, anonymous trigger URL.
+const DATA_API_URL = 'https://defaultfeb10a4d25d048849262796ba1852b.f6.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/7ce09ae5c518491b993e855350a5bd70/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=oAmvqTWcKJlPX_nqc75Qfp5Scu5zWqYLwmjZ0KfCLEY';
+
+// Build a lat/lng lookup map from the static LOCATIONS array (SharePoint doesn't have coordinates)
+const COORD_LOOKUP = {};
+LOCATIONS.forEach(loc => {
+  COORD_LOOKUP[loc.id] = { lat: loc.lat, lng: loc.lng };
+});
+
+// Helper: figure out which inspector each submission has, formatted name
+function inspectorShort(name) {
+  if (!name) return 'Inspector';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return parts[0] + ' ' + parts[parts.length - 1][0] + '.';
+}
+
+// Helper: derive bucket status from a numeric score (only used when no explicit status)
+function statusFromScore(score) {
+  if (score === null || score === undefined) return 'notinspected';
+  if (score < 75) return 'critical';
+  if (score < 90) return 'watch';
+  return 'healthy';
+}
+
+// Section ID → name, matching the inspection form's 7 sections
+const INSPECTION_SECTION_NAMES = {
+  1: 'Handlebars',
+  2: 'Carriage',
+  3: 'Springs',
+  4: 'Front Platform',
+  5: 'Back Platform',
+  6: 'Straps',
+  7: 'Hard Handles & Foot Straps',
+};
+
+// Merge SharePoint data — REBUILDS the LOCATIONS array entirely from SharePoint
+// so we never have to touch this HTML when locations are added/removed/enrolled.
+function mergeLiveData(apiData) {
+  const liveLocations = apiData.locations || [];
+  const liveSubs = apiData.submissions || [];
+  const liveResults = apiData.reformerResults || [];
+  const livePhotos = (apiData.photos || []).filter(p => p && p['{IsFolder}'] === false);
+
+  // SharePoint can return fields as plain strings, objects like { Value: "..." },
+  // or even arrays for multi-value columns. This pulls out a usable string from any shape.
+  function safeStr(v) {
+    if (v == null) return '';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+    if (typeof v === 'object') {
+      if (v.Value != null) return safeStr(v.Value);
+      if (v.DisplayName != null) return safeStr(v.DisplayName);
+      if (v.results && v.results.length) return safeStr(v.results[0]);
+      if (v.Email != null) return safeStr(v.Email);
+      try { return JSON.stringify(v); } catch (e) { return ''; }
+    }
+    return String(v);
+  }
+
+  function safeNum(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      const n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    }
+    if (typeof v === 'object' && v.Value != null) return safeNum(v.Value);
+    return null;
+  }
+
+  function safeBool(v) {
+    if (v == null) return false;
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'string') {
+      const s = v.toLowerCase();
+      return s === 'yes' || s === 'true' || s === '1';
+    }
+    if (typeof v === 'number') return v !== 0;
+    if (typeof v === 'object' && v.Value != null) return safeBool(v.Value);
+    return false;
+  }
+
+  // ===== BUILD LOCATIONS ARRAY FROM SHAREPOINT =====
+  // Filter to only locations enrolled in the inspection program.
+  const newLocations = [];
+  liveLocations.forEach(spLoc => {
+    if (!safeBool(spLoc.InspectionProgram)) return; // skip non-enrolled
+
+    const id = safeStr(spLoc.LocationID);
+    if (!id) return;
+
+    const lat = safeNum(spLoc.Latitude);
+    const lng = safeNum(spLoc.Longitude);
+
+    newLocations.push({
+      id,
+      studio: safeStr(spLoc.StudioName) || 'Unknown',
+      city: safeStr(spLoc.City) || '',
+      state: safeStr(spLoc.State) || '',
+      owner: safeStr(spLoc.FranchiseOwner) || '',
+      address: safeStr(spLoc.Address) || '',
+      lat, lng,
+      defaultReformerCount: safeNum(spLoc.ReformerCount) || 12,
+      // Inspection data filled in below
+    });
+  });
+
+  // If SharePoint returned at least one enrolled location, use that as truth.
+  // Otherwise (zero rows), keep the hardcoded LOCATIONS as a fallback so the
+  // dashboard isn't blank.
+  if (newLocations.length > 0) {
+    LOCATIONS.length = 0;
+    newLocations.forEach(l => LOCATIONS.push(l));
+    console.log(`[Dashboard] Loaded ${newLocations.length} enrolled locations from SharePoint`);
+  } else {
+    console.warn('[Dashboard] No enrolled locations in SharePoint. Falling back to hardcoded list.');
+  }
+
+  // ===== GROUP SUBMISSIONS BY LOCATION =====
+  const subsByLocation = {};
+  liveSubs.forEach(s => {
+    let locId = null;
+    const raw = s.LocationID;
+    if (typeof raw === 'string') locId = raw;
+    else if (raw && typeof raw === 'object') {
+      locId = safeStr(raw);
+    } else if (typeof raw === 'number') {
+      const match = liveLocations.find(l => l.ID === raw || l.Id === raw);
+      if (match) locId = safeStr(match.LocationID);
+    }
+    if (!locId && s['LocationID/LocationID']) locId = safeStr(s['LocationID/LocationID']);
+    if (!locId && s.LocationIDValue) locId = safeStr(s.LocationIDValue);
+    if (!locId) return;
+    if (!subsByLocation[locId]) subsByLocation[locId] = [];
+    subsByLocation[locId].push(s);
+  });
+  Object.values(subsByLocation).forEach(arr => {
+    arr.sort((a, b) => new Date(b.SubmittedAt || b.Created) - new Date(a.SubmittedAt || a.Created));
+  });
+
+  // ===== GROUP REFORMERRESULTS BY SUBMISSIONID =====
+  // ReformerResults.Title is set to "<SubmissionID>-R<num>" by the ingest flow.
+  // We split that to recover SubmissionID, then group all results per submission.
+  const resultsBySubmission = {};
+  liveResults.forEach(r => {
+    const title = safeStr(r.Title) || safeStr(r.ResultID);
+    if (!title) return;
+    // Title format: "INS-XXXXXX-R<N>"  — split on last "-R"
+    const idx = title.lastIndexOf('-R');
+    if (idx < 0) return;
+    const subId = title.slice(0, idx);
+    if (!resultsBySubmission[subId]) resultsBySubmission[subId] = [];
+    resultsBySubmission[subId].push(r);
+  });
+  // Sort each submission's reformer rows by ReformerNumber ascending
+  Object.values(resultsBySubmission).forEach(arr => {
+    arr.sort((a, b) => (safeNum(a.ReformerNumber) || 0) - (safeNum(b.ReformerNumber) || 0));
+  });
+
+  // ===== PARSE & GROUP PHOTOS BY SUBMISSION =====
+  // Each photo's path looks like:
+  //   Shared Documents/InspectionPhotos/{LocationID}/{SubmissionID}/reformer-{N}-section-{S}-{origname}.jpg
+  // We parse out the SubmissionID, reformer number, and section ID so we can
+  // attach the photo to the right place in the UI.
+  const photosBySubmission = {};
+  livePhotos.forEach(p => {
+    const fullPath = safeStr(p['{FullPath}']) || safeStr(p['{Path}']);
+    const filename = safeStr(p['{FilenameWithExtension}']) || safeStr(p['{Name}']);
+    if (!fullPath) return;
+
+    // Extract SubmissionID from the path: .../{LocationID}/{SubmissionID}/file
+    // Split the path and find the segment that looks like a submission id (starts with INS-)
+    const segments = fullPath.split('/').filter(Boolean);
+    let subId = null;
+    for (const seg of segments) {
+      if (/^INS-/i.test(seg)) { subId = seg; break; }
+    }
+    if (!subId) return;
+
+    // Parse reformer number and section from the filename: reformer-{N}-section-{S}-...
+    let reformerNum = null, sectionId = null;
+    const m = filename.match(/reformer-(\d+)-section-(\d+)/i);
+    if (m) {
+      reformerNum = parseInt(m[1], 10);
+      sectionId = parseInt(m[2], 10);
+    }
+
+    // Best display URL: prefer the medium thumbnail (loads fast, no extra auth),
+    // fall back to the direct link.
+    const thumb = p['{Thumbnail}'] || {};
+    // Grid uses medium thumbnail (fast). Lightbox uses Large thumbnail — it's a
+    // real direct image URL that renders inline. The {Link} is a SharePoint PAGE
+    // url (not a direct image), so we only use it for the "open in SharePoint" link.
+    const displayUrl = thumb.Medium || thumb.Large || thumb.Small || safeStr(p['{Link}']);
+    const largeUrl = thumb.Large || thumb.Medium || thumb.Small || safeStr(p['{Link}']);
+    const sharepointUrl = safeStr(p['{Link}']);
+
+    if (!photosBySubmission[subId]) photosBySubmission[subId] = [];
+    photosBySubmission[subId].push({
+      reformerNum, sectionId,
+      filename,
+      displayUrl,     // medium thumbnail for grid
+      largeUrl,       // large thumbnail for lightbox (renders inline)
+      sharepointUrl,  // SharePoint page link for "open in SharePoint"
+    });
+  });
+
+  // ===== MERGE INSPECTION DATA INTO EACH LOCATION =====
+  LOCATIONS.forEach(loc => {
+    const subs = subsByLocation[loc.id] || [];
+    const latest = subs[0];
+
+    if (!latest) {
+      loc.inspected = false;
+      loc.score = null;
+      loc.status = 'notinspected';
+      loc.failedItems = null;
+      loc.lastInspected = null;
+      loc.daysAgo = null;
+      loc.submissionCount = 0;
+      loc.reformers = loc.defaultReformerCount || 12;
+      loc.reformersInspected = 0;
+      return;
+    }
+
+    loc.inspected = true;
+    loc.submissionCount = subs.length;
+    const scoreNum = safeNum(latest.LocationScore);
+    loc.score = (scoreNum != null) ? Math.round(scoreNum) : null;
+    loc.reformers = safeNum(latest.ReformersOnSite) || loc.defaultReformerCount || 12;
+    loc.reformersInspected = safeNum(latest.ReformersInspected) || 0;
+
+    const status = safeStr(latest.LocationStatus).toLowerCase();
+    if (status === 'healthy' || status === 'watch' || status === 'critical') {
+      loc.status = status;
+    } else {
+      loc.status = statusFromScore(loc.score);
+    }
+
+    // Look up the SubmissionID for this latest submission to match against ReformerResults
+    const subId = safeStr(latest.SubmissionID) || safeStr(latest.Title);
+    const reformerRows = resultsBySubmission[subId] || [];
+
+    // ===== COMPUTE REAL FAIL COUNT FROM REFORMER RESULTS =====
+    // Parse each reformer's BulletDetailsJSON and count actual fails. This bypasses
+    // the placeholder 0 in TotalFail on the Submissions row because Power Automate
+    // can't yet compute it without breaking the validator.
+    let realFailCount = 0;
+    let realPassCount = 0;
+    let realNACount = 0;
+    let hasParsedDetail = false;
+    reformerRows.forEach(r => {
+      const rawJson = safeStr(r.BulletDetailsJSON);
+      if (!rawJson) return;
+      try {
+        const sections = JSON.parse(rawJson);
+        if (Array.isArray(sections)) {
+          sections.forEach(sec => {
+            (sec.bullets || []).forEach(b => {
+              hasParsedDetail = true;
+              if (b.result === 'fail') realFailCount++;
+              else if (b.result === 'pass') realPassCount++;
+              else if (b.result === 'na') realNACount++;
+            });
+          });
+        }
+      } catch (e) { /* ignore bad JSON */ }
+    });
+
+    if (hasParsedDetail) {
+      loc.failedItems = realFailCount;
+      loc._realCounts = { pass: realPassCount, fail: realFailCount, na: realNACount };
+    } else {
+      // Fall back to the Submissions row's value
+      const failNum = safeNum(latest.TotalFail);
+      loc.failedItems = (failNum != null) ? failNum : 0;
+    }
+
+    const submittedAt = safeStr(latest.SubmittedAt) || safeStr(latest.Created);
+    if (submittedAt) {
+      const d = new Date(submittedAt);
+      if (!isNaN(d.getTime())) {
+        loc.lastInspected = d;
+        loc.daysAgo = Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+      }
+    }
+    loc._latest = latest;
+    loc._allSubs = subs;
+    loc._latestReformerRows = reformerRows; // raw SharePoint rows for the latest submission
+    // Attach photos belonging to this latest submission
+    const latestSubId = safeStr(latest.SubmissionID) || safeStr(latest.Title);
+    loc._latestPhotos = photosBySubmission[latestSubId] || [];
+    // Report-distribution status: was the latest submission's PDF sent to recipients?
+    // ReportSent comes from SharePoint as a boolean; ReportSentAt is an ISO timestamp.
+    loc.reportSent = safeBool(latest.ReportSent);
+    const sentAtRaw = safeStr(latest.ReportSentAt);
+    if (sentAtRaw) {
+      const dt = new Date(sentAtRaw);
+      loc.reportSentAt = isNaN(dt.getTime()) ? null : dt;
+    } else {
+      loc.reportSentAt = null;
+    }
+  });
+
+  return liveSubs;
+}
+
+// Trigger render after data loads
+function renderEverything() {
+  computeKPIs();
+  renderMapDots();
+  renderAlertList();
+  renderTable();
+  renderActivityFeed();
+}
+
+// KPI tile recompute from real data
+function computeKPIs() {
+  const inspected = LOCATIONS.filter(l => l.inspected);
+  const critical = LOCATIONS.filter(l => l.status === 'critical').length;
+
+  // Sum of reformers ACTUALLY INSPECTED across all inspected locations
+  const reformersInspected = inspected.reduce((acc, l) => acc + (l.reformersInspected || 0), 0);
+  // Sum of reformers PRESENT at inspected locations (for the "of X total" denominator)
+  const reformersOnSite = inspected.reduce((acc, l) => acc + (l.reformers || 0), 0);
+
+  const portfolioScore = inspected.length
+    ? Math.round(inspected.reduce((a, l) => a + (l.score || 0), 0) / inspected.length)
+    : null;
+
+  // Find and update each KPI value
+  const kpiValues = document.querySelectorAll('.kpi-value');
+  if (kpiValues.length >= 4) {
+    kpiValues[0].innerHTML = `${inspected.length}<span style="font-size:24px; color:var(--ink-faint);"> / ${LOCATIONS.length}</span>`;
+    kpiValues[1].innerHTML = reformersOnSite > 0
+      ? `${reformersInspected}<span style="font-size:24px; color:var(--ink-faint);"> / ${reformersOnSite}</span>`
+      : `${reformersInspected}`;
+    kpiValues[2].innerHTML = portfolioScore != null
+      ? `${portfolioScore}<span style="font-size:24px; color:var(--ink-faint);">%</span>`
+      : `—`;
+    kpiValues[3].textContent = critical;
+  }
+
+  // Show a "live" indicator in the header meta
+  const lastSync = document.querySelector('.header-meta div:first-child');
+  if (lastSync) {
+    lastSync.innerHTML = `Last sync · <strong>just now</strong>`;
+  }
+
+  // Update the "Critical Alerts" panel badge count
+  const alertBadge = document.querySelector('.panel-title .badge-count[style*="critical"]');
+  if (alertBadge) {
+    alertBadge.textContent = critical;
+  }
+}
+
+// ---------- ENTRY POINT ----------
+async function loadAndRender() {
+  // Show a subtle loading indicator at the top
+  const banner = document.querySelector('.demo-banner');
+  if (banner) {
+    banner.innerHTML = '⏳ <strong>Loading live data from SharePoint…</strong>';
+  }
+
+  try {
+    const res = await fetch(DATA_API_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    console.log('[Dashboard] Live data received:', data);
+    console.log('[Dashboard] First submission row (sample shape):', (data.submissions || [])[0]);
+    try {
+      mergeLiveData(data);
+    } catch (mergeErr) {
+      console.error('[Dashboard] Merge error:', mergeErr);
+      throw new Error('Merge failed: ' + (mergeErr.message || mergeErr));
+    }
+    if (banner) {
+      banner.innerHTML = '🟢 <strong>Live</strong> — Dashboard is reading directly from your System4 SharePoint. Updates appear as new inspections are submitted.';
+      banner.style.background = 'linear-gradient(90deg, #e8f7ef, #e8f7ef)';
+      banner.style.borderBottomColor = '#00a86b';
+      banner.style.color = '#00754a';
+    }
+  } catch (e) {
+    console.error('[Dashboard] Failed to load live data:', e);
+    if (banner) {
+      banner.innerHTML = '⚠️ <strong>Could not reach the System4 data API</strong> — Showing simulated data. Error: ' + (e.message || 'unknown');
+      banner.style.background = '#ffe3e6';
+      banner.style.borderBottomColor = '#C81E28';
+      banner.style.color = '#8b0e1c';
+    }
+    // Fall back to randomized fake data so the dashboard still demos
+    seedFakeData();
+  }
+  renderEverything();
+}
+
+// ---------- FALLBACK (seeded fake data, used only when API fails) ----------
+function seedFakeData() {
+  LOCATIONS.forEach(loc => {
+    const rng = seeded(loc.id);
+    loc.reformers = 10 + Math.floor(rng() * 6);
+    const r = rng();
+    if (r < 0.10) {
+      loc.inspected = false;
+      loc.score = null;
+      loc.status = 'notinspected';
+      loc.failedItems = null;
+      loc.lastInspected = null;
+    } else {
+      loc.inspected = true;
+      if (r < 0.20) {
+        loc.score = 60 + Math.floor(rng() * 14);
+        loc.status = 'critical';
+        loc.failedItems = 8 + Math.floor(rng() * 15);
+      } else if (r < 0.45) {
+        loc.score = 76 + Math.floor(rng() * 13);
+        loc.status = 'watch';
+        loc.failedItems = 3 + Math.floor(rng() * 6);
+      } else {
+        loc.score = 90 + Math.floor(rng() * 10);
+        loc.status = 'healthy';
+        loc.failedItems = Math.floor(rng() * 3);
+      }
+      const daysAgo = Math.floor(rng() * 60) + 1;
+      const d = new Date(); d.setDate(d.getDate() - daysAgo);
+      loc.lastInspected = d;
+      loc.daysAgo = daysAgo;
+    }
+  });
+}
+
+// Seeded random helper (used only by fallback)
+function seeded(seed) {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return () => {
+    h += 0x6D2B79F5;
+    let t = h;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Assign realistic-looking inspection data
+// (Moved into seedFakeData() above — runs only if live API call fails)
+
+// ---------- Status helpers ----------
+function statusOf(loc) {
+  return loc.status;
+}
+function statusLabel(s) {
+  return { healthy:'Healthy', watch:'Watch', critical:'Critical', notinspected:'Not Inspected' }[s] || s;
+}
+function statusColor(s) {
+  return { healthy:'#00a86b', watch:'#f4a300', critical:'#C81E28', notinspected:'#cbd0db' }[s];
+}
+function formatDate(d) {
+  if (!d) return '—';
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+function formatDaysAgo(days) {
+  if (!days) return '—';
+  if (days === 1) return '1d ago';
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days/7)}w ago`;
+}
+
+// ---------- LEAFLET MAP ----------
+// Real geographic map via Leaflet + OpenStreetMap tiles.
+// Markers placed by actual lat/lng — no projection math, no chance of misalignment.
+
+let leafletMap = null;
+const markerLayer = { markers: [] };
+
+function initLeafletMap() {
+  if (leafletMap) return; // already initialized
+  // Center on continental US, zoom level shows the whole country
+  leafletMap = L.map('leafletMap', {
+    center: [37.8, -96],
+    zoom: 4,
+    scrollWheelZoom: false, // prevent accidental scroll-zoom while paging
+    zoomControl: true,
+    attributionControl: true,
+  });
+
+  // Use Carto's Positron (light, clean) tile layer — way nicer than default OSM for dashboards
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19,
+  }).addTo(leafletMap);
+}
+
+function renderMapDots() {
+  initLeafletMap();
+
+  // Clear any existing markers
+  markerLayer.markers.forEach(m => leafletMap.removeLayer(m));
+  markerLayer.markers = [];
+
+  LOCATIONS.forEach(loc => {
+    if (loc.lat == null || loc.lng == null) return;
+    const status = loc.status || 'notinspected';
+    const isCritical = status === 'critical';
+    // Check if this critical alert has been acknowledged — if so, don't pulse
+    const isAcknowledged = isCritical && typeof getAckMap === 'function' && !!getAckMap()[alertFingerprint(loc)];
+    const cls = (isCritical && !isAcknowledged) ? 'jetset-marker-pulse' : `jetset-marker ${status}`;
+
+    const icon = L.divIcon({
+      className: '', // suppress Leaflet's default 'leaflet-div-icon'
+      html: `<div class="${cls}"></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+      popupAnchor: [0, -8],
+    });
+
+    const marker = L.marker([loc.lat, loc.lng], { icon }).addTo(leafletMap);
+
+    const statusBg = {
+      healthy: 'background:#e8f7ef; color:#00754a;',
+      watch: 'background:#fff7e1; color:#946000;',
+      critical: 'background:#fef2f3; color:#C81E28;',
+      notinspected: 'background:#f0f2f7; color:#5a6275;'
+    }[status];
+
+    const scoreLine = loc.inspected
+      ? `<div class="map-popup-score" style="${statusBg}">Score ${loc.score}% · ${statusLabel(status)}</div>`
+      : `<div class="map-popup-score" style="${statusBg}">Not yet inspected</div>`;
+
+    marker.bindPopup(`
+      <strong>${loc.studio} — ${loc.city}, ${loc.state}</strong>
+      <div style="color:#5a6275; font-size:11px; font-family:'JetBrains Mono',monospace; margin-top:2px;">${loc.id}</div>
+      ${scoreLine}
+      <div style="margin-top:8px;">
+        <a href="javascript:void(0)" onclick="openModal(LOCATIONS.find(l=>l.id==='${loc.id}'))" style="color:var(--s4-blue); font-weight:600; font-size:12px;">View details →</a>
+      </div>
+    `, { closeButton: true, autoPan: true });
+
+    markerLayer.markers.push(marker);
+  });
+
+  // Slight delay then invalidate size — fixes a Leaflet quirk where the map
+  // sometimes renders blank if its container animates in or starts hidden
+  setTimeout(() => leafletMap && leafletMap.invalidateSize(), 100);
+}
+
+// ---------- CRITICAL ALERTS ----------
+const alertList = document.getElementById('alertList');
+
+// Persisted acknowledgments — keyed by a fingerprint of the alert
+// (LocationID + the inspection's submission ID) so a NEW critical inspection
+// for the same location won't be auto-suppressed by an old acknowledgment.
+function getAckMap() {
+  try {
+    return JSON.parse(localStorage.getItem('jetsetAckMap') || '{}');
+  } catch (e) {
+    return {};
+  }
+}
+function setAckMap(m) {
+  try {
+    localStorage.setItem('jetsetAckMap', JSON.stringify(m));
+  } catch (e) {}
+}
+function alertFingerprint(loc) {
+  const sub = loc._latest || {};
+  const subId = (typeof sub.SubmissionID === 'string' && sub.SubmissionID)
+              || (sub.SubmissionID && sub.SubmissionID.Value)
+              || sub.ID || sub.Id || 'unknown';
+  return `${loc.id}::${subId}`;
+}
+function acknowledgeAlert(loc) {
+  const map = getAckMap();
+  map[alertFingerprint(loc)] = {
+    by: 'You',  // future: pull from auth
+    at: new Date().toISOString()
+  };
+  setAckMap(map);
+  renderAlertList();
+  renderMapDots();
+}
+function unacknowledgeAlert(loc) {
+  const map = getAckMap();
+  delete map[alertFingerprint(loc)];
+  setAckMap(map);
+  renderAlertList();
+  renderMapDots();
+}
+
+function renderAlertList() {
+  alertList.innerHTML = '';
+
+  const criticalLocations = LOCATIONS.filter(l => l.status === 'critical');
+
+  if (criticalLocations.length === 0) {
+    alertList.innerHTML = `
+      <div style="padding:32px 22px; text-align:center; color:var(--ink-soft);">
+        <div style="font-size:32px; margin-bottom:8px;">✓</div>
+        <div style="font-weight:600; color:var(--healthy);">All clear</div>
+        <div style="font-size:12px; margin-top:4px;">No critical issues across the portfolio.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const ackMap = getAckMap();
+  // Sort: unacknowledged first, then acknowledged (chronologically grouped)
+  const sorted = [...criticalLocations].sort((a, b) => {
+    const aAck = !!ackMap[alertFingerprint(a)];
+    const bAck = !!ackMap[alertFingerprint(b)];
+    if (aAck !== bAck) return aAck ? 1 : -1;
+    return 0;
+  });
+
+  sorted.forEach(loc => {
+    const sub = loc._latest;
+    // failedItems can be null (truly unknown) or a real number (including 0).
+    // Power Automate currently writes 0 as a placeholder because the per-bullet
+    // aggregation step hasn't been built yet. So 0 alongside a Critical status
+    // is a known placeholder, not a real "zero fails."
+    const hasRealFailCount = (loc.failedItems != null && loc.failedItems > 0);
+    const failPhrase = hasRealFailCount
+      ? `${loc.failedItems} failed item${loc.failedItems === 1 ? '' : 's'}`
+      : 'needs review';
+    const daysAgoText = loc.daysAgo == null ? 'recent' :
+      (loc.daysAgo === 0 ? 'today' :
+       loc.daysAgo === 1 ? '1d' :
+       loc.daysAgo < 30 ? `${loc.daysAgo}d` :
+       `${Math.floor(loc.daysAgo/7)}w`);
+
+    const fp = alertFingerprint(loc);
+    const ack = ackMap[fp];
+
+    const item = document.createElement('div');
+    item.className = 'alert-item' + (ack ? ' alert-acknowledged' : '');
+
+    const pulseHtml = ack
+      ? '<div class="alert-pulse alert-pulse-muted"></div>'
+      : '<div class="alert-pulse"></div>';
+
+    const ackBadge = ack
+      ? `<div style="font-size:11px; color:var(--ink-faint); margin-top:6px;">
+           ✓ Acknowledged ${ack.by ? 'by ' + ack.by : ''} ${ack.at ? '· ' + new Date(ack.at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : ''}
+           <a href="javascript:void(0)" data-undo="${loc.id}" style="margin-left:8px; color:var(--s4-blue); font-weight:600;">Undo</a>
+         </div>`
+      : '';
+
+    const ackButton = ack
+      ? ''
+      : `<button data-ack="${loc.id}" class="alert-ack-btn">Acknowledge</button>`;
+
+    item.innerHTML = `
+      ${pulseHtml}
+      <div class="alert-content">
+        <div class="alert-title">
+          <span class="alert-tag">Critical</span>
+          Score ${loc.score != null ? loc.score + '%' : '—'} · ${failPhrase}
+        </div>
+        <div class="alert-meta">${loc.studio} — ${loc.city}, ${loc.state} · ${loc.id}</div>
+        ${ackBadge}
+      </div>
+      <div class="alert-actions">
+        <div class="alert-age">${daysAgoText}</div>
+        ${ackButton}
+      </div>
+    `;
+
+    // Click on the body opens the modal; click on Ack button does NOT open the modal
+    item.addEventListener('click', e => {
+      if (e.target.closest('button[data-ack]') || e.target.closest('a[data-undo]')) return;
+      openModal(loc);
+    });
+
+    const ackBtn = item.querySelector('button[data-ack]');
+    if (ackBtn) ackBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      acknowledgeAlert(loc);
+    });
+    const undoLink = item.querySelector('a[data-undo]');
+    if (undoLink) undoLink.addEventListener('click', e => {
+      e.stopPropagation();
+      unacknowledgeAlert(loc);
+    });
+
+    alertList.appendChild(item);
+  });
+}
+
+// ---------- LOCATIONS TABLE ----------
+let currentFilter = 'all';
+let currentSearch = '';
+
+function renderTable() {
+  const tbody = document.getElementById('locationsTbody');
+  tbody.innerHTML = '';
+  const sorted = [...LOCATIONS]
+    .filter(l => {
+      if (currentFilter === 'all') return true;
+      return l.status === currentFilter;
+    })
+    .filter(l => {
+      if (!currentSearch) return true;
+      const q = currentSearch.toLowerCase();
+      return l.studio.toLowerCase().includes(q) || l.city.toLowerCase().includes(q) ||
+             l.id.toLowerCase().includes(q) || (l.owner && l.owner.toLowerCase().includes(q));
+    })
+    .sort((a, b) => {
+      // Critical first, then watch, then by score asc, then healthy by score desc, then not inspected
+      const order = { critical:0, watch:1, healthy:2, notinspected:3 };
+      if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+      if (a.score === null) return 1;
+      if (b.score === null) return -1;
+      if (a.status === 'critical' || a.status === 'watch') return a.score - b.score;
+      return b.score - a.score;
+    });
+
+  document.getElementById('tableCount').textContent = sorted.length;
+
+  sorted.forEach(loc => {
+    const tr = document.createElement('tr');
+    tr.onclick = () => openModal(loc);
+    const scoreCls = loc.score !== null && loc.score < 75 ? 'low' : '';
+    tr.innerHTML = `
+      <td>
+        <div class="table-location">${loc.studio} — ${loc.city}</div>
+        <div class="table-location-id">${loc.id} · ${loc.owner || ''}</div>
+      </td>
+      <td><span class="table-state">${loc.state}</span></td>
+      <td>${loc.lastInspected ? formatDate(loc.lastInspected) + ' <span style="color:var(--ink-faint); font-size:11px;">· ' + formatDaysAgo(loc.daysAgo) + '</span>' : '<span style="color:var(--ink-faint);">—</span>'}</td>
+      <td>${
+        !loc.lastInspected
+          ? '<span style="color:var(--ink-faint);">—</span>'
+          : loc.reportSent
+            ? `<span class="report-sent-pill sent" title="Sent ${loc.reportSentAt ? formatDate(loc.reportSentAt) : ''}">✓ Sent${loc.reportSentAt ? ' <span style=\"color:var(--ink-faint); font-weight:400;\">' + formatDate(loc.reportSentAt) + '</span>' : ''}</span>`
+            : '<span class="report-sent-pill pending" title="Not yet sent">⏳ Not Sent</span>'
+      }</td>
+      <td class="right mono">${
+        loc.inspected && loc.reformersInspected != null && loc.reformersInspected < loc.reformers
+          ? `<span style="color:var(--watch); font-weight:600;">${loc.reformersInspected}</span> <span style="color:var(--ink-faint);">/ ${loc.reformers}</span>`
+          : loc.reformers
+      }</td>
+      <td class="right"><span class="table-score ${scoreCls}">${loc.score !== null ? loc.score + '%' : '—'}</span></td>
+      <td class="right"><span class="table-fails ${loc.failedItems > 0 ? 'has' : ''}">${
+        loc.failedItems != null && loc.failedItems > 0
+          ? loc.failedItems
+          : (loc.inspected ? '0' : '—')
+      }</span></td>
+      <td><span class="pill ${loc.status === 'notinspected' ? 'watch' : loc.status}" style="${loc.status === 'notinspected' ? 'background:#f0f2f7; color:var(--ink-soft);' : ''}">${statusLabel(loc.status)}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+// renderTable() is called from loadAndRender() after data loads
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  currentSearch = e.target.value;
+  renderTable();
+});
+document.querySelectorAll('.filter-chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderTable();
+  });
+});
+
+// ---------- ACTIVITY FEED ----------
+const activityList = document.getElementById('activityList');
+const icons = { healthy:'✓', watch:'!', critical:'✕' };
+
+function timeAgoText(date) {
+  const ms = Date.now() - date.getTime();
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hr ago`;
+  const day = Math.floor(hr / 24);
+  if (day === 1) return 'Yesterday';
+  if (day < 7) return `${day} days ago`;
+  const wk = Math.floor(day / 7);
+  if (wk < 4) return `${wk} wk ago`;
+  return date.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+
+function renderActivityFeed() {
+  activityList.innerHTML = '';
+
+  // Collect all submissions across all locations, sort newest first, take top 10
+  const allSubs = [];
+  LOCATIONS.forEach(loc => {
+    (loc._allSubs || []).forEach(s => {
+      allSubs.push({ loc, sub: s });
+    });
+  });
+  allSubs.sort((a, b) =>
+    new Date(b.sub.SubmittedAt || b.sub.Created) -
+    new Date(a.sub.SubmittedAt || a.sub.Created)
+  );
+  const recent = allSubs.slice(0, 10);
+
+  if (recent.length === 0) {
+    activityList.innerHTML = `
+      <div style="padding:24px 22px; text-align:center; color:var(--ink-soft); font-size:13px;">
+        No inspection submissions yet.<br/>
+        <span style="font-size:11px; color:var(--ink-faint); margin-top:6px; display:inline-block;">Activity will appear here as inspectors submit reports.</span>
+      </div>
+    `;
+    return;
+  }
+
+  recent.forEach(({ loc, sub }) => {
+    const subDateStr = (sub.SubmittedAt && typeof sub.SubmittedAt === 'string') ? sub.SubmittedAt
+                    : (sub.Created && typeof sub.Created === 'string') ? sub.Created
+                    : (sub.SubmittedAt && sub.SubmittedAt.Value) ? sub.SubmittedAt.Value
+                    : null;
+    const submittedAt = subDateStr ? new Date(subDateStr) : new Date();
+    if (isNaN(submittedAt.getTime())) submittedAt.setTime(Date.now());
+
+    const scoreRaw = sub.LocationScore;
+    const scoreNum = (typeof scoreRaw === 'number') ? scoreRaw
+                  : (typeof scoreRaw === 'string') ? parseFloat(scoreRaw)
+                  : (scoreRaw && scoreRaw.Value != null) ? parseFloat(scoreRaw.Value) : null;
+    const score = (scoreNum != null && !isNaN(scoreNum)) ? Math.round(scoreNum) : null;
+
+    let explicitStatus = '';
+    if (typeof sub.LocationStatus === 'string') explicitStatus = sub.LocationStatus.toLowerCase();
+    else if (sub.LocationStatus && sub.LocationStatus.Value) explicitStatus = String(sub.LocationStatus.Value).toLowerCase();
+
+    const status = (explicitStatus === 'healthy' || explicitStatus === 'watch' || explicitStatus === 'critical')
+      ? explicitStatus : statusFromScore(score);
+
+    const inspectorName = (typeof sub.InspectorName === 'string') ? sub.InspectorName
+                       : (sub.InspectorName && sub.InspectorName.Value) ? sub.InspectorName.Value : 'Inspector';
+    const who = inspectorShort(inspectorName);
+
+    const div = document.createElement('div');
+    div.className = 'activity-item';
+    div.innerHTML = `
+      <div class="activity-dot ${status}" style="color:${statusColor(status)}; font-weight:700;">${icons[status]}</div>
+      <div class="activity-content">
+        <div><strong>${loc.studio}</strong> inspected by ${who} — scored <strong style="color:${statusColor(status)};">${score != null ? score + '%' : '—'}</strong></div>
+        <div class="activity-meta">${loc.id} · ${timeAgoText(submittedAt)}</div>
+      </div>
+    `;
+    div.style.cursor = 'pointer';
+    div.onclick = () => openModal(loc);
+    activityList.appendChild(div);
+  });
+}
+
+// ---------- DRILL-IN MODAL ----------
+function openModal(loc) {
+  // Close any open Leaflet popup so it doesn't linger behind the modal
+  if (typeof leafletMap !== 'undefined' && leafletMap) {
+    leafletMap.closePopup();
+  }
+  const overlay = document.getElementById('modalOverlay');
+  const body = document.getElementById('modalBody');
+
+  // Build the per-reformer breakdown.
+  // For now, we only have LOCATION-level data from SharePoint (LocationScore,
+  // ReformersInspected). We don't yet have per-reformer detail — that comes
+  // when we build the ReformerResults Power Automate flow (Part B).
+  //
+  // Honest display rules until then:
+  //   - If a reformer was inspected, show the location score (best approximation
+  //     we have for that reformer until per-reformer data is wired up)
+  //   - If a reformer was NOT inspected, show "Not Inspected" (gray)
+  //   - Status inherits from the location (Healthy/Watch/Critical)
+  const reformers = [];
+  const inspectedCount = loc.reformersInspected || 0;
+  for (let i = 1; i <= loc.reformers; i++) {
+    if (!loc.inspected || i > inspectedCount) {
+      reformers.push({ num: i, score: null, status: 'notinspected' });
+    } else {
+      reformers.push({ num: i, score: loc.score, status: loc.status });
+    }
+  }
+
+  // Quarterly history — REAL data from submissions, no more fake quarters
+  function quarterKey(date) {
+    const q = Math.floor(date.getMonth() / 3) + 1;
+    return `Q${q} ${date.getFullYear()}`;
+  }
+
+  // Build a map of quarter → best score for that quarter (most recent inspection per quarter)
+  const subsByQuarter = {};
+  (loc._allSubs || []).forEach(s => {
+    const dateStr = (typeof s.SubmittedAt === 'string') ? s.SubmittedAt
+                  : (s.SubmittedAt && s.SubmittedAt.Value) ? s.SubmittedAt.Value
+                  : (typeof s.Created === 'string') ? s.Created : null;
+    if (!dateStr) return;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return;
+    const qk = quarterKey(d);
+    const scoreRaw = s.LocationScore;
+    const scoreNum = (typeof scoreRaw === 'number') ? scoreRaw
+                  : (typeof scoreRaw === 'string') ? parseFloat(scoreRaw)
+                  : (scoreRaw && scoreRaw.Value != null) ? parseFloat(scoreRaw.Value) : null;
+    if (scoreNum == null || isNaN(scoreNum)) return;
+    // Keep the most recent submission per quarter (subs are already sorted newest-first)
+    if (!subsByQuarter[qk]) {
+      subsByQuarter[qk] = { date: d, score: Math.round(scoreNum) };
+    }
+  });
+
+  // Build the last 4 quarters as labels, fill with real data where it exists, "No data" otherwise
+  const now = new Date();
+  const currentQk = quarterKey(now);
+  const quarters = [];
+  const qScores = [];
+  for (let i = 3; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 - i * 3, 1);
+    const qk = quarterKey(d);
+    quarters.push(qk);
+    qScores.push(subsByQuarter[qk] ? subsByQuarter[qk].score : null);
+  }
+
+  body.innerHTML = `
+    <div class="modal-header">
+      <button class="modal-close" onclick="closeModal()">×</button>
+      <div class="modal-eyebrow">JETSET Location · ${loc.state}</div>
+      <div class="modal-title">${loc.studio} — ${loc.city}</div>
+      <div class="modal-id">${loc.id} · Owner: ${loc.owner || '—'}</div>
+    </div>
+    <div class="modal-summary">
+      <div>
+        <div class="label">Current Score</div>
+        <div class="value ${loc.score !== null && loc.score < 75 ? 'critical' : ''}">${loc.score !== null ? loc.score + '%' : '—'}</div>
+      </div>
+      <div>
+        <div class="label">Status</div>
+        <div style="margin-top:8px;"><span class="pill ${loc.status === 'notinspected' ? 'watch' : loc.status}" style="font-size:12px; ${loc.status === 'notinspected' ? 'background:#f0f2f7; color:var(--ink-soft);' : ''}">${statusLabel(loc.status)}</span></div>
+      </div>
+      <div>
+        <div class="label">Reformers Inspected</div>
+        <div class="value">${
+          loc.inspected
+            ? `${loc.reformersInspected || 0}<span style="font-size:18px; color:var(--ink-faint);"> / ${loc.reformers}</span>`
+            : `<span style="color:var(--ink-faint);">—</span>`
+        }</div>
+      </div>
+      <div>
+        <div class="label">Last Inspected</div>
+        <div class="value" style="font-size:18px; margin-top:8px;">${loc.lastInspected ? formatDate(loc.lastInspected) : 'Pending'}</div>
+        ${loc.daysAgo ? `<div style="font-size:11px; color:var(--ink-soft); margin-top:2px;">${formatDaysAgo(loc.daysAgo)}</div>` : ''}
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section-title">Reformer Breakdown</div>
+      <div class="reformer-grid">
+        ${reformers.map(r => `
+          <div class="reformer-tile ${r.status === 'notinspected' ? '' : r.status}">
+            <div class="num">#${r.num}</div>
+            <div class="score" style="${r.score === null ? 'color:var(--ink-faint); font-size:18px; margin-top:8px;' : ''}">${r.score !== null ? r.score + '%' : '—'}</div>
+            <div style="font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.06em; font-weight:600;">${statusLabel(r.status)}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div style="font-size:11px; color:var(--ink-faint); margin-top:10px;">Inspected reformers show the location score. Per-reformer detail (individual scores per machine) becomes available once granular results are captured per inspection.</div>
+
+      <div class="modal-section-title" style="margin-top:28px;">Quarterly History</div>
+      <div class="quarterly-history">
+        ${quarters.map((q, i) => {
+          const isCurrent = (i === 3);
+          const hasData = qScores[i] !== null;
+          return `
+          <div class="quarter-card ${isCurrent ? 'current' : ''}" ${!hasData ? 'style="opacity:0.55;"' : ''}>
+            <div class="q-label">${q}${isCurrent ? ' · Current' : ''}</div>
+            <div class="q-score">${hasData ? qScores[i] + '%' : '<span style="font-size:14px; color:var(--ink-faint);">No data</span>'}</div>
+          </div>
+          `;
+        }).join('')}
+      </div>
+      <div style="font-size:11px; color:var(--ink-faint); margin-top:8px;">Quarterly history is built from real inspection submissions. Quarters with no inspection on record show "No data."</div>
+
+      ${(loc._latestPhotos && loc._latestPhotos.length > 0) ? `
+      <div class="modal-section-title" style="margin-top:28px;">Inspection Photos <span style="font-weight:400; color:var(--ink-faint); font-size:12px;">(${loc._latestPhotos.length})</span></div>
+      <div class="photo-grid">
+        ${loc._latestPhotos.map((ph, idx) => {
+          const sectionName = (INSPECTION_SECTION_NAMES[ph.sectionId] || ('Section ' + ph.sectionId));
+          return `
+          <div class="photo-thumb" onclick="openPhotoViewer('${loc.id}', ${idx})">
+            <img src="${ph.displayUrl}" alt="Reformer ${ph.reformerNum} ${sectionName}" loading="lazy" />
+            <div class="photo-thumb-label">
+              <span>Reformer ${ph.reformerNum != null ? '#' + ph.reformerNum : '?'}</span>
+              <span style="opacity:0.8;">${sectionName}</span>
+            </div>
+          </div>
+          `;
+        }).join('')}
+      </div>
+      <div style="font-size:11px; color:var(--ink-faint); margin-top:8px;">Photos captured by the inspector on failed checkpoints. Click any photo to enlarge.</div>
+      ` : ''}
+
+      <div class="modal-section-title" style="margin-top:28px;">Inspection Report PDF</div>
+      <div style="padding:18px; border:1px solid var(--border); border-radius:10px; display:flex; align-items:center; gap:14px; background:var(--bg);">
+        <div style="width:44px; height:44px; background:var(--s4-red); color:white; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:11px;">PDF</div>
+        <div style="flex:1;">
+          <div style="font-weight:600;">${loc.studio} Inspection Report</div>
+          <div style="font-size:12px; color:var(--ink-soft); margin-top:2px;">
+            ${loc.lastInspected ? 'Latest: ' + formatDate(loc.lastInspected) + ' · Generated on demand' : 'No inspection on record yet'}
+          </div>
+        </div>
+        <button
+          onclick="generateInspectionPDF('${loc.id}', this)"
+          ${!loc.lastInspected ? 'disabled' : ''}
+          style="padding:8px 14px; background:white; color:var(--s4-blue); border:1.5px solid var(--s4-blue); border-radius:8px; font-family:inherit; font-weight:600; font-size:13px; cursor:${loc.lastInspected ? 'pointer' : 'not-allowed'}; ${!loc.lastInspected ? 'opacity:0.5;' : ''}"
+        >Download PDF</button>
+        <button
+          onclick="sendInspectionReport('${loc.id}', this)"
+          ${!loc.lastInspected ? 'disabled' : ''}
+          style="padding:8px 16px; background:${loc.lastInspected ? 'var(--s4-blue)' : 'var(--ink-faint)'}; color:white; border:none; border-radius:8px; font-family:inherit; font-weight:600; font-size:13px; cursor:${loc.lastInspected ? 'pointer' : 'not-allowed'};"
+        >Send Report ✉</button>
+      </div>
+      ${loc.lastInspected ? `
+      <div style="margin-top:10px; padding:10px 14px; border-radius:8px; display:flex; align-items:center; gap:10px; font-size:13px;
+        background:${loc.reportSent ? 'var(--healthy-soft, #d3f0e1)' : '#fff4d6'};
+        color:${loc.reportSent ? 'var(--healthy, #00824a)' : '#8a6500'};">
+        <span style="font-size:16px;">${loc.reportSent ? '✓' : '⏳'}</span>
+        <div style="flex:1;">
+          <strong>${loc.reportSent ? 'Report sent' : 'Report not yet sent'}</strong>
+          ${loc.reportSent && loc.reportSentAt ? ` on ${formatDate(loc.reportSentAt)} at ${loc.reportSentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ''}
+        </div>
+        ${!loc.reportSent ? `
+          <button
+            onclick="markReportSent('${loc.id}', this)"
+            style="padding:5px 12px; background:white; color:#8a6500; border:1px solid #8a6500; border-radius:6px; font-family:inherit; font-weight:600; font-size:11px; cursor:pointer;"
+            title="Manually mark this report as sent (e.g., if sent via another channel)"
+          >Mark Sent</button>
+        ` : ''}
+      </div>
+      ` : ''}
+    </div>
+  `;
+
+  overlay.classList.add('show');
+}
+
+function closeModal(e) {
+  if (e && e.target.id !== 'modalOverlay' && !e.target.classList.contains('modal-close')) return;
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+// ---------- PHOTO LIGHTBOX ----------
+let _photoViewerState = { photos: [], index: 0 };
+
+function openPhotoViewer(locationId, photoIndex) {
+  const loc = LOCATIONS.find(l => l.id === locationId);
+  if (!loc || !loc._latestPhotos || loc._latestPhotos.length === 0) return;
+  _photoViewerState.photos = loc._latestPhotos;
+  _photoViewerState.index = photoIndex || 0;
+  renderPhotoViewer();
+  document.getElementById('photoLightbox').classList.add('show');
+}
+
+function renderPhotoViewer() {
+  const { photos, index } = _photoViewerState;
+  const ph = photos[index];
+  if (!ph) return;
+  const img = document.getElementById('photoLightboxImg');
+  const caption = document.getElementById('photoLightboxCaption');
+  // Use the LARGE THUMBNAIL — it's a direct image URL that renders inline.
+  // (The SharePoint {Link} is a page URL, not an image, so it can't display here.)
+  img.src = ph.largeUrl || ph.displayUrl;
+  const sectionName = INSPECTION_SECTION_NAMES[ph.sectionId] || ('Section ' + ph.sectionId);
+  caption.innerHTML = `
+    Reformer ${ph.reformerNum != null ? '#' + ph.reformerNum : '?'} — ${sectionName}
+    <div class="sub">${ph.filename} · ${index + 1} of ${photos.length}</div>
+    ${ph.sharepointUrl ? `<div class="photo-lightbox-open-full" onclick="window.open('${ph.sharepointUrl}', '_blank')">Open full size in SharePoint →</div>` : ''}
+  `;
+  const showNav = photos.length > 1;
+  document.querySelectorAll('.photo-lightbox-nav').forEach(b => b.style.display = showNav ? 'flex' : 'none');
+}
+
+function photoViewerNav(dir) {
+  const { photos } = _photoViewerState;
+  if (!photos.length) return;
+  _photoViewerState.index = (_photoViewerState.index + dir + photos.length) % photos.length;
+  renderPhotoViewer();
+}
+
+function closePhotoViewer(e) {
+  if (e && e.target.id !== 'photoLightbox' && !e.target.classList.contains('photo-lightbox-close')) return;
+  document.getElementById('photoLightbox').classList.remove('show');
+}
+
+// ---------- NAVIGATION & EXPORTS ----------
+
+// Smooth-scrolls the page to the All Locations table panel.
+function scrollToLocationsTable() {
+  const el = document.getElementById('locationsTablePanel');
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Brief highlight pulse so the user sees where the page landed
+  el.style.transition = 'box-shadow 0.3s';
+  el.style.boxShadow = '0 0 0 3px rgba(0,100,170,0.35)';
+  setTimeout(() => { el.style.boxShadow = ''; }, 1200);
+}
+
+// Builds a CSV string from an array of header strings + rows of values.
+// Each value is properly escaped for CSV (wrapped in quotes, internal quotes doubled).
+function buildCSV(headers, rows) {
+  function esc(v) {
+    if (v == null) return '';
+    const s = String(v);
+    // Always quote — safest for fields that may contain commas, quotes, or newlines
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  const lines = [headers.map(esc).join(',')];
+  rows.forEach(row => lines.push(row.map(esc).join(',')));
+  return lines.join('\r\n');
+}
+
+// Triggers a browser download of a CSV string with the given filename.
+function downloadCSV(csv, filename) {
+  // BOM helps Excel recognize UTF-8 correctly
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function _dateForFilename() {
+  const d = new Date();
+  return d.toISOString().slice(0, 10);
+}
+
+// Export all locations as CSV — used by the Export CSV link on the locations table.
+// Respects current search/filter? No — we export ALL locations so JETSET HQ gets
+// the full portfolio snapshot. (Easy to change later if requested.)
+function exportLocationsCSV() {
+  const headers = [
+    'LocationID', 'Studio', 'City', 'State', 'Franchise Owner',
+    'Status', 'Score', 'Reformers Inspected', 'Reformers On-Site',
+    'Failed Items', 'Last Inspected', 'Days Since Inspection',
+    'Latitude', 'Longitude'
+  ];
+  const rows = LOCATIONS.map(loc => [
+    loc.id,
+    loc.studio,
+    loc.city,
+    loc.state,
+    loc.owner || '',
+    loc.inspected ? statusLabel(loc.status) : 'Not Inspected',
+    loc.score != null ? loc.score + '%' : '',
+    loc.reformersInspected != null ? loc.reformersInspected : '',
+    loc.reformers != null ? loc.reformers : '',
+    loc.failedItems != null && loc.failedItems > 0 ? loc.failedItems : (loc.inspected ? 0 : ''),
+    loc.lastInspected ? loc.lastInspected.toISOString().slice(0, 10) : '',
+    loc.daysAgo != null ? loc.daysAgo : '',
+    loc.lat != null ? loc.lat : '',
+    loc.lng != null ? loc.lng : ''
+  ]);
+  const csv = buildCSV(headers, rows);
+  downloadCSV(csv, `JETSET_All_Locations_${_dateForFilename()}.csv`);
+}
+
+// Export just the Critical alerts as CSV — used by the Export link on the
+// Critical Alerts panel. Includes acknowledgment state.
+function exportCriticalAlertsCSV() {
+  const criticals = LOCATIONS.filter(l => l.status === 'critical');
+  if (criticals.length === 0) {
+    alert('No critical alerts to export.');
+    return;
+  }
+  const ackMap = typeof getAckMap === 'function' ? getAckMap() : {};
+  const headers = [
+    'LocationID', 'Studio', 'City', 'State', 'Franchise Owner',
+    'Score', 'Failed Items', 'Reformers Inspected', 'Reformers On-Site',
+    'Last Inspected', 'Days Since Inspection',
+    'Acknowledged', 'Acknowledged At', 'Acknowledged By'
+  ];
+  const rows = criticals.map(loc => {
+    const fp = typeof alertFingerprint === 'function' ? alertFingerprint(loc) : null;
+    const ack = fp ? ackMap[fp] : null;
+    return [
+      loc.id,
+      loc.studio,
+      loc.city,
+      loc.state,
+      loc.owner || '',
+      loc.score != null ? loc.score + '%' : '',
+      loc.failedItems != null && loc.failedItems > 0 ? loc.failedItems : 'needs review',
+      loc.reformersInspected != null ? loc.reformersInspected : '',
+      loc.reformers != null ? loc.reformers : '',
+      loc.lastInspected ? loc.lastInspected.toISOString().slice(0, 10) : '',
+      loc.daysAgo != null ? loc.daysAgo : '',
+      ack ? 'Yes' : 'No',
+      ack && ack.at ? ack.at : '',
+      ack && ack.by ? ack.by : ''
+    ];
+  });
+  const csv = buildCSV(headers, rows);
+  downloadCSV(csv, `JETSET_Critical_Alerts_${_dateForFilename()}.csv`);
+}
+
+// ---------- PDF GENERATION ----------
+// Builds a branded inspection report PDF for a location using jsPDF.
+// Pulls real data from the location's latest submission + cached _allSubs.
+// ---------- SEND REPORT TO RECIPIENTS ----------
+// Generates the PDF in the browser, then POSTs it to the JETSET Send Report
+// Power Automate flow which saves the file to SharePoint and emails it to
+// recipients (currently hard-coded to stevek@system4.com; will pull per-location
+// recipients from SharePoint columns when going live).
+
+const SEND_REPORT_FLOW_URL = 'https://defaultfeb10a4d25d048849262796ba1852b.f6.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/0495e19d043142f792c9091601164d90/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=L6-OZnVSX6U_kITCPedvdLQs0YEmP-hcUaV-FnrHev8';
+
+// ---------- MANUAL "MARK SENT" OVERRIDE ----------
+// For cases where the report was distributed via another channel (handed off
+// in person, sent via separate email, etc.). Updates the Submissions row to
+// ReportSent=Yes without actually sending an email.
+// Calls a small dedicated Power Automate flow: "JETSET Inspection - Mark Sent"
+
+const MARK_SENT_FLOW_URL = '__MARK_SENT_FLOW_URL_PLACEHOLDER__';
+
+async function markReportSent(locationId, btnEl) {
+  const loc = LOCATIONS.find(l => l.id === locationId);
+  if (!loc || !loc._latest) {
+    alert('No inspection data available for this location.');
+    return;
+  }
+
+  const submissionId = (typeof safeStr === 'function')
+    ? (safeStr(loc._latest.SubmissionID) || safeStr(loc._latest.Title))
+    : (loc._latest.SubmissionID || loc._latest.Title || '');
+
+  if (!submissionId) {
+    alert('Could not determine the submission ID for this report.');
+    return;
+  }
+
+  if (!confirm(`Mark the latest inspection report for ${loc.studio} as sent? Use this only if the report was distributed through another channel (e.g., emailed manually, handed off in person).`)) {
+    return;
+  }
+
+  if (MARK_SENT_FLOW_URL.startsWith('__')) {
+    alert('Mark Sent flow has not been wired up yet. Please configure the MARK_SENT_FLOW_URL in the dashboard with the Power Automate flow URL.');
+    return;
+  }
+
+  const origText = btnEl ? btnEl.textContent : null;
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Marking...'; }
+
+  try {
+    const resp = await fetch(MARK_SENT_FLOW_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ submissionId }),
+    });
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      throw new Error(`Flow returned ${resp.status}: ${txt.slice(0, 200)}`);
+    }
+    // Optimistically update local state
+    loc.reportSent = true;
+    loc.reportSentAt = new Date();
+    if (typeof renderTable === 'function') renderTable();
+    if (btnEl) { btnEl.textContent = '✓ Marked'; btnEl.style.background = 'var(--healthy)'; btnEl.style.color = 'white'; }
+    // Re-open the modal to refresh its content with the new state
+    setTimeout(() => {
+      const modalOpen = document.getElementById('modalOverlay')?.classList.contains('show');
+      if (modalOpen) openModal(loc);
+    }, 800);
+  } catch (err) {
+    console.error('[Mark Sent] Failed:', err);
+    alert('Could not mark report as sent: ' + (err.message || err));
+    if (btnEl) { btnEl.textContent = origText || 'Mark Sent'; btnEl.disabled = false; }
+  }
+}
+
+async function sendInspectionReport(locationId, btnEl) {
+  const loc = LOCATIONS.find(l => l.id === locationId);
+  if (!loc || !loc._latest) {
+    alert('No inspection data available for this location yet.');
+    return;
+  }
+
+  // Brief confirmation so a stray click doesn't send something to the recipient list.
+  if (!confirm(`Send the latest inspection report for ${loc.studio} to the recipient list?`)) {
+    return;
+  }
+
+  const origText = btnEl ? btnEl.textContent : null;
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Building PDF...'; }
+
+  try {
+    // 1) Build the PDF in base64
+    const pdf = await generateInspectionPDF(locationId, null, 'base64');
+    if (!pdf || !pdf.base64) throw new Error('PDF generation returned empty result');
+
+    if (btnEl) btnEl.textContent = 'Sending...';
+
+    // 2) POST to the Send Report flow
+    const payload = {
+      locationId: loc.id,
+      locationName: loc.studio,
+      locationCityState: `${loc.city}, ${loc.state}`,
+      submissionId: pdf.submissionId || '',
+      score: pdf.score != null ? pdf.score : 0,
+      status: pdf.statusRaw || 'Healthy',
+      reformersInspected: pdf.reformersInspected || 0,
+      reformersOnSite: pdf.reformersOnSite || 0,
+      totalFail: pdf.totalFail != null ? pdf.totalFail : 0,
+      inspectionDate: pdf.submittedDate ? pdf.submittedDate.toLocaleDateString('en-US', { dateStyle: 'long' }) : '',
+      filename: pdf.filename,
+      pdfBase64: pdf.base64,
+    };
+
+    const resp = await fetch(SEND_REPORT_FLOW_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      throw new Error(`Flow returned ${resp.status}: ${txt.slice(0, 200)}`);
+    }
+
+    // Success — brief confirmation, then reset
+    if (btnEl) { btnEl.textContent = '✓ Sent'; btnEl.style.background = 'var(--healthy)'; }
+    console.log('[Send Report] Success for', loc.id, payload.filename);
+
+    // Optimistically update local state so the UI reflects "sent" without a full reload.
+    // (The next refresh of Get Data will confirm from SharePoint.)
+    loc.reportSent = true;
+    loc.reportSentAt = new Date();
+    // Refresh the table if it's currently rendered
+    if (typeof renderTable === 'function') renderTable();
+
+    setTimeout(() => {
+      if (btnEl) {
+        btnEl.textContent = origText || 'Send Report ✉';
+        btnEl.style.background = '';
+        btnEl.disabled = false;
+      }
+    }, 2500);
+  } catch (err) {
+    console.error('[Send Report] Failed:', err);
+    alert('Could not send report: ' + (err.message || err));
+    if (btnEl) {
+      btnEl.textContent = origText || 'Send Report ✉';
+      btnEl.disabled = false;
+    }
+  }
+}
+
+async function generateInspectionPDF(locationId, btnEl, mode) {
+  mode = mode || 'download'; // 'download' = trigger browser save; 'base64' = return base64 string
+  const _btnOrigText = btnEl ? btnEl.textContent : null;
+  if (btnEl && mode === 'download') { btnEl.textContent = 'Generating...'; btnEl.disabled = true; }
+  try {
+  const loc = LOCATIONS.find(l => l.id === locationId);
+  if (!loc || !loc._latest) {
+    alert('No inspection data available for this location yet.');
+    return;
+  }
+  const sub = loc._latest;
+
+  // Safe extractors (SharePoint fields can be strings or {Value:...} objects)
+  const safeStr = (v) => {
+    if (v == null) return '';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+    if (typeof v === 'object' && v.Value != null) return safeStr(v.Value);
+    return '';
+  };
+  const safeNum = (v) => {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') { const n = parseFloat(v); return isNaN(n) ? null : n; }
+    if (typeof v === 'object' && v.Value != null) return safeNum(v.Value);
+    return null;
+  };
+
+  const score = safeNum(sub.LocationScore);
+  const statusRaw = safeStr(sub.LocationStatus) || statusFromScore(score);
+  const statusUpper = statusRaw.toUpperCase();
+  const inspectorName = safeStr(sub.InspectorName) || 'Unknown';
+  const inspectorEmail = safeStr(sub.InspectorEmail) || '';
+  const inspectorCompany = safeStr(sub.InspectorCompany) || '';
+  const inspectorPhone = safeStr(sub.InspectorPhone) || '';
+  const submittedStr = safeStr(sub.SubmittedAt) || safeStr(sub.Created);
+  const submittedDate = submittedStr ? new Date(submittedStr) : new Date();
+  const submissionId = safeStr(sub.SubmissionID) || safeStr(sub.Title) || 'N/A';
+  const reformersOnSite = safeNum(sub.ReformersOnSite) || loc.reformers || 0;
+  const reformersInspected = safeNum(sub.ReformersInspected) || 0;
+  // Totals: prefer the client-computed real counts (from parsed BulletDetailsJSON)
+  // over the SharePoint placeholder values, which are currently 0 because the
+  // Power Automate per-bullet aggregation step couldn't be built.
+  let totalPass, totalFail, totalNA;
+  if (loc._realCounts) {
+    totalPass = loc._realCounts.pass;
+    totalFail = loc._realCounts.fail;
+    totalNA = loc._realCounts.na;
+  } else {
+    totalPass = safeNum(sub.TotalPass);
+    totalFail = safeNum(sub.TotalFail);
+    totalNA = safeNum(sub.TotalNA);
+  }
+  const signoffName = safeStr(sub.SignoffTypedName) || inspectorName;
+  const signoffAt = safeStr(sub.SignoffSignedAt) || submittedStr;
+  const attestation = safeStr(sub.AttestationText) || '';
+  const videoWatched = sub.VideoWatched === true || sub.VideoWatched === 'true' || sub.VideoWatched === 1;
+
+  // ---- jsPDF instance ----
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' }); // 612 x 792 pt
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 40;
+
+  // ---- Brand colors ----
+  const NAVY = [0, 40, 71];
+  const BLUE = [0, 100, 170];
+  const RED = [200, 30, 40];
+  const GRAY = [90, 91, 93];
+  const FAINT = [138, 146, 165];
+  const HEALTHY = [0, 168, 107];
+  const WATCH = [244, 163, 0];
+  const CRITICAL = [200, 30, 40];
+
+  let statusColorRGB = HEALTHY;
+  if (statusUpper === 'WATCH') statusColorRGB = WATCH;
+  else if (statusUpper === 'CRITICAL') statusColorRGB = CRITICAL;
+
+  // ===== HEADER BAR =====
+  doc.setFillColor(...NAVY);
+  doc.rect(0, 0, pageW, 90, 'F');
+  // Red accent stripe
+  doc.setFillColor(...RED);
+  doc.rect(0, 0, pageW, 4, 'F');
+
+  // Title text
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.text('REFORMER INSPECTION REPORT', margin, 48);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.text('JETSET Pilates · Quarterly Multi-Point Inspection Program', margin, 68);
+
+  // System4 brand tag in top-right
+  doc.setFontSize(9);
+  doc.text('Delivered by System4 Facility Services Management', pageW - margin, 48, { align: 'right' });
+  doc.setFontSize(8);
+  doc.setTextColor(180, 200, 220);
+  doc.text('national accounts division', pageW - margin, 62, { align: 'right' });
+
+  let y = 120;
+
+  // ===== LOCATION HEADER =====
+  doc.setTextColor(...NAVY);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.text(`${loc.studio} — ${loc.city}, ${loc.state}`, margin, y);
+  y += 18;
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...FAINT);
+  doc.text(`${loc.id}  ·  Submission ${submissionId}`, margin, y);
+  y += 8;
+
+  // Subtle horizontal rule
+  doc.setDrawColor(220, 224, 232);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y + 8, pageW - margin, y + 8);
+  y += 28;
+
+  // ===== STATUS + SCORE BLOCK =====
+  // Big score on the left
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...NAVY);
+  doc.setFontSize(56);
+  doc.text(`${score != null ? score : '—'}${score != null ? '%' : ''}`, margin, y + 30);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...GRAY);
+  doc.text('LOCATION SCORE', margin, y + 48);
+
+  // Status pill on the right
+  const pillX = margin + 200;
+  const pillY = y;
+  const pillH = 36;
+  const pillW = 130;
+  doc.setFillColor(...statusColorRGB);
+  doc.roundedRect(pillX, pillY, pillW, pillH, 6, 6, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text(statusUpper, pillX + pillW/2, pillY + 23, { align: 'center' });
+  doc.setFontSize(9);
+  doc.setTextColor(...GRAY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('STATUS', pillX, pillY + 53);
+
+  // Reformer counts on the far right
+  const rightX = pageW - margin;
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...NAVY);
+  doc.setFontSize(28);
+  doc.text(`${reformersInspected}`, rightX - 60, y + 24, { align: 'right' });
+  doc.setFontSize(14);
+  doc.setTextColor(...FAINT);
+  doc.text(` / ${reformersOnSite}`, rightX - 60, y + 24, { align: 'left' });
+  doc.setFontSize(9);
+  doc.setTextColor(...GRAY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('REFORMERS INSPECTED', rightX, y + 48, { align: 'right' });
+
+  y += 80;
+
+  // ===== INSPECTION DETAILS TABLE =====
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...GRAY);
+  doc.setFontSize(10);
+  doc.text('INSPECTION DETAILS', margin, y);
+  y += 6;
+  doc.setDrawColor(...BLUE);
+  doc.setLineWidth(1.5);
+  doc.line(margin, y, margin + 60, y);
+  y += 16;
+
+  const detailsRows = [
+    ['Inspection Date', submittedDate.toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' })],
+    ['Inspector', inspectorName + (inspectorCompany ? ' (' + inspectorCompany + ')' : '')],
+    ['Inspector Contact', [inspectorEmail, inspectorPhone].filter(Boolean).join(' · ')],
+    ['Franchise Owner', loc.owner || '—'],
+    ['Address', loc.address || '—'],
+    ['Training Video Confirmed', videoWatched ? 'Yes' : 'No'],
+  ];
+
+  doc.autoTable({
+    startY: y,
+    head: [],
+    body: detailsRows,
+    theme: 'plain',
+    styles: { fontSize: 10, cellPadding: { top: 4, right: 6, bottom: 4, left: 0 }, textColor: [12, 20, 36] },
+    columnStyles: {
+      0: { fontStyle: 'bold', textColor: GRAY, cellWidth: 140 },
+      1: { textColor: [12, 20, 36] }
+    },
+    margin: { left: margin, right: margin },
+  });
+  y = doc.lastAutoTable.finalY + 24;
+
+  // ===== INSPECTION TOTALS =====
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...GRAY);
+  doc.setFontSize(10);
+  doc.text('INSPECTION TOTALS', margin, y);
+  y += 6;
+  doc.setDrawColor(...BLUE);
+  doc.setLineWidth(1.5);
+  doc.line(margin, y, margin + 60, y);
+  y += 14;
+
+  // Three big metric boxes side by side
+  const boxW = (pageW - margin*2 - 20) / 3;
+  const boxes = [
+    { label: 'CHECKPOINTS PASSED', val: totalPass != null ? totalPass : '—', color: HEALTHY },
+    { label: 'CHECKPOINTS FAILED', val: totalFail != null && totalFail > 0 ? totalFail : (totalFail === 0 ? '0' : '—'), color: totalFail > 0 ? CRITICAL : GRAY },
+    { label: 'NOT APPLICABLE', val: totalNA != null ? totalNA : '—', color: FAINT },
+  ];
+  boxes.forEach((b, i) => {
+    const bx = margin + i * (boxW + 10);
+    doc.setDrawColor(230, 233, 240);
+    doc.setLineWidth(1);
+    doc.roundedRect(bx, y, boxW, 60, 6, 6, 'S');
+    // Color accent on left edge
+    doc.setFillColor(...b.color);
+    doc.rect(bx, y, 3, 60, 'F');
+    // Value
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...NAVY);
+    doc.setFontSize(28);
+    doc.text(String(b.val), bx + 14, y + 36);
+    // Label
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...GRAY);
+    doc.setFontSize(8);
+    doc.text(b.label, bx + 14, y + 52);
+  });
+  y += 80;
+
+  // ===== SIGNOFF BLOCK =====
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...GRAY);
+  doc.setFontSize(10);
+  doc.text('INSPECTOR SIGNOFF', margin, y);
+  y += 6;
+  doc.setDrawColor(...BLUE);
+  doc.setLineWidth(1.5);
+  doc.line(margin, y, margin + 60, y);
+  y += 14;
+
+  // Box with signoff details
+  doc.setDrawColor(230, 233, 240);
+  doc.setLineWidth(1);
+  doc.setFillColor(248, 250, 253);
+  const sBoxH = 100;
+  doc.roundedRect(margin, y, pageW - margin*2, sBoxH, 6, 6, 'FD');
+
+  if (attestation) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(...GRAY);
+    const attestLines = doc.splitTextToSize('"' + attestation + '"', pageW - margin*2 - 28);
+    doc.text(attestLines.slice(0, 4), margin + 14, y + 18);
+  }
+  // Typed name
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(...NAVY);
+  doc.text(signoffName, margin + 14, y + sBoxH - 22);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...GRAY);
+  const signedDate = signoffAt ? new Date(signoffAt) : submittedDate;
+  doc.text(
+    'Electronically signed · ' + signedDate.toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' }),
+    margin + 14, y + sBoxH - 10
+  );
+
+  y += sBoxH + 28;
+
+  // ===== FOOTER (last thing on each page) =====
+  function drawFooter() {
+    const fy = pageH - 30;
+    doc.setDrawColor(...RED);
+    doc.setLineWidth(2);
+    doc.line(margin, fy - 14, margin + 30, fy - 14);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...FAINT);
+    doc.text('System4 Facility Services Management · Confidential Inspection Report', margin, fy);
+    doc.text(`Generated ${new Date().toLocaleString()}`, pageW - margin, fy, { align: 'right' });
+  }
+  drawFooter();
+
+  // ===== PAGE 2+: REFORMER BREAKDOWN with REAL detail =====
+  doc.addPage();
+
+  // Helper to draw the mini header on each subsequent page
+  function drawMiniHeader() {
+    doc.setFillColor(...NAVY);
+    doc.rect(0, 0, pageW, 50, 'F');
+    doc.setFillColor(...RED);
+    doc.rect(0, 0, pageW, 3, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('REFORMER DETAIL', margin, 30);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`${loc.studio} — ${loc.city}, ${loc.state} · ${loc.id}`, pageW - margin, 30, { align: 'right' });
+  }
+  drawMiniHeader();
+
+  y = 80;
+
+  // Pull the reformer rows we attached during mergeLiveData
+  const reformerRowsRaw = loc._latestReformerRows || [];
+
+  // Parse out a clean structure per reformer
+  const parsedReformers = reformerRowsRaw.map(r => {
+    const num = safeNum(r.ReformerNumber);
+    const rScore = safeNum(r.Score);
+    const rStatus = safeStr(r.Status) || (rScore != null ? statusFromScore(rScore) : 'notinspected');
+    const rNotes = safeStr(r.Notes);
+    let sections = [];
+    try {
+      const raw = safeStr(r.BulletDetailsJSON);
+      if (raw) sections = JSON.parse(raw);
+    } catch (e) { /* leave empty */ }
+    return { num, score: rScore, status: rStatus, notes: rNotes, sections };
+  }).sort((a, b) => (a.num || 0) - (b.num || 0));
+
+  // Summary intro
+  doc.setTextColor(...GRAY);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`${reformersInspected} of ${reformersOnSite} reformers inspected on ${submittedDate.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })}.`, margin, y);
+  y += 24;
+
+  // Helper to check space and break page
+  function ensureSpace(needed) {
+    if (y + needed > pageH - 60) {
+      drawFooter();
+      doc.addPage();
+      drawMiniHeader();
+      y = 80;
+    }
+  }
+
+  // Render each reformer
+  if (parsedReformers.length === 0) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(10);
+    doc.setTextColor(...FAINT);
+    doc.text('No per-reformer detail available for this submission.', margin, y);
+  } else {
+    parsedReformers.forEach((rf, rfIdx) => {
+      ensureSpace(80);
+
+      // Reformer header card
+      const headerH = 50;
+      let rStatusColor = HEALTHY;
+      const sLower = (rf.status || '').toLowerCase();
+      if (sLower === 'watch') rStatusColor = WATCH;
+      else if (sLower === 'critical') rStatusColor = CRITICAL;
+      else if (sLower === 'not inspected' || sLower === 'notinspected') rStatusColor = FAINT;
+
+      doc.setDrawColor(230, 233, 240);
+      doc.setLineWidth(1);
+      doc.setFillColor(250, 251, 253);
+      doc.roundedRect(margin, y, pageW - margin*2, headerH, 6, 6, 'FD');
+      // Left edge color stripe
+      doc.setFillColor(...rStatusColor);
+      doc.rect(margin, y, 3, headerH, 'F');
+
+      // Reformer number
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...NAVY);
+      doc.setFontSize(18);
+      doc.text(`Reformer #${rf.num}`, margin + 14, y + 24);
+
+      // Status
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(...rStatusColor);
+      doc.text((rf.status || '').toUpperCase(), margin + 14, y + 40);
+
+      // Score on the right
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...NAVY);
+      doc.setFontSize(24);
+      doc.text(rf.score != null ? rf.score + '%' : '—', pageW - margin - 14, y + 30, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...GRAY);
+      doc.text('SCORE', pageW - margin - 14, y + 42, { align: 'right' });
+
+      y += headerH + 12;
+
+      // If we have section detail, render it as a table
+      if (rf.sections && rf.sections.length > 0) {
+        // Build rows: one row per bullet, grouped visually by section
+        const tableRows = [];
+        rf.sections.forEach(sec => {
+          const isCritical = !!sec.critical;
+          const secLabel = (isCritical ? '⚑ ' : '') + sec.name + ' (Section ' + sec.id + ')';
+          // Section header row
+          tableRows.push({
+            isSectionHeader: true,
+            label: secLabel,
+            critical: isCritical,
+          });
+          (sec.bullets || []).forEach(b => {
+            tableRows.push({
+              isSectionHeader: false,
+              text: b.text || '',
+              result: (b.result || '').toLowerCase(),
+              critical: isCritical,
+            });
+          });
+          // Photo count info row if photos exist
+          if (sec.photoCount && sec.photoCount > 0) {
+            tableRows.push({
+              isSectionHeader: false,
+              text: `[${sec.photoCount} photo${sec.photoCount === 1 ? '' : 's'} attached to this section]`,
+              result: 'info',
+              critical: isCritical,
+            });
+          }
+        });
+
+        ensureSpace(60);
+
+        doc.autoTable({
+          startY: y,
+          head: [['Inspection Item', 'Result']],
+          body: tableRows.map(r => {
+            if (r.isSectionHeader) return [r.label, ''];
+            if (r.result === 'info') return [r.text, ''];
+            return [r.text, (r.result || '').toUpperCase()];
+          }),
+          theme: 'plain',
+          styles: {
+            fontSize: 9,
+            cellPadding: { top: 4, right: 6, bottom: 4, left: 8 },
+            lineColor: [230, 233, 240],
+            lineWidth: 0.5,
+            textColor: [12, 20, 36],
+          },
+          headStyles: {
+            fillColor: NAVY,
+            textColor: 255,
+            fontSize: 9,
+            cellPadding: 6,
+            fontStyle: 'bold',
+          },
+          columnStyles: {
+            0: { cellWidth: pageW - margin*2 - 90 },
+            1: { cellWidth: 90, halign: 'center', fontStyle: 'bold' },
+          },
+          margin: { left: margin, right: margin },
+          didParseCell: function(data) {
+            const row = tableRows[data.row.index];
+            if (!row) return;
+            if (row.isSectionHeader) {
+              data.cell.styles.fillColor = row.critical ? [253, 235, 237] : [240, 244, 250];
+              data.cell.styles.textColor = row.critical ? RED : NAVY;
+              data.cell.styles.fontStyle = 'bold';
+              data.cell.styles.fontSize = 10;
+              data.cell.styles.cellPadding = { top: 6, right: 6, bottom: 6, left: 8 };
+            } else if (data.section === 'body' && data.column.index === 1) {
+              // Result cell color
+              if (row.result === 'pass') data.cell.styles.textColor = HEALTHY;
+              else if (row.result === 'fail') data.cell.styles.textColor = CRITICAL;
+              else if (row.result === 'na') data.cell.styles.textColor = GRAY;
+              else if (row.result === 'info') data.cell.styles.textColor = FAINT;
+            } else if (row.result === 'info') {
+              data.cell.styles.fontStyle = 'italic';
+              data.cell.styles.textColor = FAINT;
+              data.cell.styles.fontSize = 8;
+            } else if (row.result === 'fail' && data.column.index === 0) {
+              // Bold the bullet text for failures so they stand out
+              data.cell.styles.fontStyle = 'bold';
+              data.cell.styles.textColor = [80, 12, 16];
+            }
+          },
+          willDrawCell: function(data) {
+            // Need to refresh y after table draws
+          },
+        });
+
+        y = doc.lastAutoTable.finalY + 10;
+
+        // Notes for this reformer
+        if (rf.notes) {
+          ensureSpace(40);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setTextColor(...GRAY);
+          doc.text('INSPECTOR NOTES', margin, y);
+          y += 12;
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(9);
+          doc.setTextColor(12, 20, 36);
+          const noteLines = doc.splitTextToSize(rf.notes, pageW - margin*2);
+          ensureSpace(noteLines.length * 12 + 4);
+          doc.text(noteLines, margin, y);
+          y += noteLines.length * 11 + 10;
+        }
+      } else {
+        // No section data — likely not inspected
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(9);
+        doc.setTextColor(...FAINT);
+        doc.text('No inspection items recorded for this reformer.', margin, y);
+        y += 16;
+      }
+
+      y += 12; // gap between reformers
+    });
+  }
+
+  drawFooter();
+
+  // ===== PHOTOS APPENDIX PAGE(S) =====
+  const photos = loc._latestPhotos || [];
+  if (photos.length > 0) {
+    // Helper: fetch an image URL and return a base64 dataURL (or null on failure)
+    async function fetchImageAsDataUrl(url) {
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) return null;
+        const blob = await resp.blob();
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn('[PDF] Could not fetch photo for embedding:', url, e);
+        return null;
+      }
+    }
+
+    doc.addPage();
+    drawMiniHeaderPhotos();
+
+    function drawMiniHeaderPhotos() {
+      doc.setFillColor(...NAVY);
+      doc.rect(0, 0, pageW, 50, 'F');
+      doc.setFillColor(...RED);
+      doc.rect(0, 0, pageW, 3, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.text('INSPECTION PHOTOS', margin, 30);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`${loc.studio} — ${loc.city}, ${loc.state} · ${loc.id}`, pageW - margin, 30, { align: 'right' });
+    }
+
+    let py = 80;
+    doc.setTextColor(...GRAY);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`${photos.length} photo${photos.length === 1 ? '' : 's'} captured by the inspector on failed checkpoints.`, margin, py);
+    py += 24;
+
+    // Grid layout: 2 columns
+    const colGap = 20;
+    const cellW = (pageW - margin*2 - colGap) / 2;
+    const imgH = cellW * 0.72;      // image area height (4:3-ish)
+    const captionH = 30;
+    const cellH = imgH + captionH;
+    let col = 0;
+
+    // Update the submitting button-style feedback isn't here, but show console progress
+    let embedded = 0, failed = 0;
+
+    for (let i = 0; i < photos.length; i++) {
+      const ph = photos[i];
+      // Use the large thumbnail (direct image URL) for embedding
+      const dataUrl = await fetchImageAsDataUrl(ph.largeUrl || ph.displayUrl);
+
+      const x = margin + col * (cellW + colGap);
+      // New page if this row won't fit
+      if (py + cellH > pageH - 60) {
+        drawFooter();
+        doc.addPage();
+        drawMiniHeaderPhotos();
+        py = 80;
+        col = 0;
+      }
+      const cellX = margin + col * (cellW + colGap);
+
+      // Frame
+      doc.setDrawColor(220, 224, 232);
+      doc.setLineWidth(1);
+      doc.roundedRect(cellX, py, cellW, cellH, 6, 6, 'S');
+
+      if (dataUrl) {
+        try {
+          // Determine format from dataURL
+          const fmt = dataUrl.indexOf('image/png') >= 0 ? 'PNG' : 'JPEG';
+          // Fit image within the image area, centered
+          doc.addImage(dataUrl, fmt, cellX + 6, py + 6, cellW - 12, imgH - 6, undefined, 'FAST');
+          embedded++;
+        } catch (e) {
+          console.warn('[PDF] addImage failed:', e);
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(9);
+          doc.setTextColor(...FAINT);
+          doc.text('[image could not be embedded]', cellX + 12, py + imgH/2);
+          failed++;
+        }
+      } else {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(9);
+        doc.setTextColor(...FAINT);
+        doc.text('[photo unavailable]', cellX + 12, py + imgH/2);
+        failed++;
+      }
+
+      // Caption
+      const sectionName = INSPECTION_SECTION_NAMES[ph.sectionId] || ('Section ' + ph.sectionId);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...NAVY);
+      doc.text(`Reformer ${ph.reformerNum != null ? '#' + ph.reformerNum : '?'} — ${sectionName}`, cellX + 6, py + imgH + 12);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(...FAINT);
+      const fnLines = doc.splitTextToSize(ph.filename || '', cellW - 12);
+      doc.text(fnLines[0] || '', cellX + 6, py + imgH + 22);
+
+      col++;
+      if (col >= 2) {
+        col = 0;
+        py += cellH + 16;
+      }
+    }
+
+    console.log(`[PDF] Photos: ${embedded} embedded, ${failed} failed/unavailable`);
+    drawFooter();
+  }
+
+  // ===== SAVE OR RETURN =====
+  const safeStudio = loc.studio.replace(/[^a-z0-9]/gi, '_');
+  const dateStr = submittedDate.toISOString().slice(0, 10);
+  // Filename encodes LocationID as a prefix so reports can be sorted/filtered
+  // by location in the SharePoint Reports folder.
+  const filename = `${loc.id}_JETSET_${safeStudio}_${dateStr}_Inspection.pdf`;
+
+  if (mode === 'base64') {
+    // Return the PDF as a base64 string (without the data URL prefix) plus the
+    // metadata the Send Report flow needs.
+    const dataUri = doc.output('datauristring');
+    const base64 = dataUri.substring(dataUri.indexOf(',') + 1);
+    return {
+      filename,
+      base64,
+      score, statusRaw, statusUpper,
+      reformersInspected, reformersOnSite,
+      submittedDate, submissionId, totalFail
+    };
+  } else {
+    doc.save(filename);
+  }
+  } catch (err) {
+    console.error('[PDF] Generation failed:', err);
+    if (mode === 'download') {
+      alert('Sorry, the PDF could not be generated: ' + (err.message || err));
+    }
+    throw err; // re-throw so callers in 'base64' mode see the failure
+  } finally {
+    if (btnEl && mode === 'download') { btnEl.textContent = _btnOrigText || 'Download PDF'; btnEl.disabled = false; }
+  }
+}
+
+// Escape to close modal + lightbox; arrows to navigate photos
+document.addEventListener('keydown', e => {
+  const lightbox = document.getElementById('photoLightbox');
+  if (lightbox && lightbox.classList.contains('show')) {
+    if (e.key === 'Escape') lightbox.classList.remove('show');
+    else if (e.key === 'ArrowLeft') photoViewerNav(-1);
+    else if (e.key === 'ArrowRight') photoViewerNav(1);
+    return; // don't also close the modal underneath
+  }
+  if (e.key === 'Escape') document.getElementById('modalOverlay').classList.remove('show');
+});
+
+// ---------- KICK EVERYTHING OFF ----------
+// Fetch live data from Power Automate, then render the whole dashboard.
+// If the fetch fails, falls back to seeded fake data so the UI still works.
+loadAndRender();
+</script>
+
+</body>
+</html>
