@@ -932,65 +932,37 @@
     </table>
   </div>
 
-  <!-- ========== ROW 3: TREND + ACTIVITY ========== -->
+  <!-- ========== ROW 3: PORTFOLIO INSIGHTS + ACTIVITY ========== -->
   <div class="grid-2col" style="grid-template-columns: 1.4fr 1fr;">
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Portfolio Score Trend</div>
+    <!-- LEFT: two stacked widgets — Status Distribution (top) + Failed Checkpoints (bottom) -->
+    <div style="display:flex; flex-direction:column; gap:18px;">
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Portfolio Status Distribution</div>
+          <div class="panel-sub" id="statusDistSub" style="font-size:11px; color:var(--ink-soft); font-weight:500;"></div>
+        </div>
+        <div class="panel-body" style="padding:14px 22px 18px;">
+          <div id="statusDistCards" style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;"></div>
+        </div>
       </div>
-      <div class="trend-chart">
-        <svg viewBox="0 0 700 240" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#0064AA" stop-opacity="0.25"/>
-              <stop offset="100%" stop-color="#0064AA" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <!-- Grid -->
-          <g class="trend-grid">
-            <line x1="60" y1="40" x2="680" y2="40"/>
-            <line x1="60" y1="90" x2="680" y2="90"/>
-            <line x1="60" y1="140" x2="680" y2="140"/>
-            <line x1="60" y1="190" x2="680" y2="190"/>
-          </g>
-          <!-- Y-axis labels -->
-          <g class="trend-axis">
-            <text x="50" y="44" text-anchor="end">100%</text>
-            <text x="50" y="94" text-anchor="end">90%</text>
-            <text x="50" y="144" text-anchor="end">80%</text>
-            <text x="50" y="194" text-anchor="end">70%</text>
-            <!-- X-axis labels -->
-            <text x="120" y="220" text-anchor="middle">Q3 2025</text>
-            <text x="260" y="220" text-anchor="middle">Q4 2025</text>
-            <text x="400" y="220" text-anchor="middle">Q1 2026</text>
-            <text x="540" y="220" text-anchor="middle">Q2 2026</text>
-            <text x="640" y="220" text-anchor="middle" style="fill:var(--s4-blue); font-weight:600;">Current</text>
-          </g>
-          <!-- Area + Line -->
-          <path d="M 120 130 L 260 115 L 400 105 L 540 95 L 640 78 L 640 200 L 120 200 Z" class="trend-area"/>
-          <path d="M 120 130 L 260 115 L 400 105 L 540 95 L 640 78" class="trend-line"/>
-          <!-- Dots -->
-          <circle cx="120" cy="130" r="5" class="trend-dot"/>
-          <circle cx="260" cy="115" r="5" class="trend-dot"/>
-          <circle cx="400" cy="105" r="5" class="trend-dot"/>
-          <circle cx="540" cy="95" r="5" class="trend-dot"/>
-          <circle cx="640" cy="78" r="6" fill="var(--s4-red)" stroke="white" stroke-width="2.5"/>
-          <!-- Score labels on dots -->
-          <g style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; fill:var(--s4-navy);">
-            <text x="120" y="120" text-anchor="middle">86%</text>
-            <text x="260" y="105" text-anchor="middle">88%</text>
-            <text x="400" y="95" text-anchor="middle">89%</text>
-            <text x="540" y="85" text-anchor="middle">89%</text>
-            <text x="640" y="68" text-anchor="middle" style="fill:var(--s4-red); font-weight:700;">91%</text>
-          </g>
-        </svg>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Failed Checkpoints by Section</div>
+          <div class="panel-sub" id="failedSectionsSub" style="font-size:11px; color:var(--ink-soft); font-weight:500;"></div>
+        </div>
+        <div class="panel-body" style="padding:14px 22px 18px;">
+          <div id="failedSectionsBars"></div>
+        </div>
       </div>
+
     </div>
 
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title">Recent Activity</div>
-        <a class="panel-action">Full log →</a>
+        <a class="panel-action" href="javascript:void(0)" id="activityToggleLink" onclick="toggleActivityFullLog()">Full log →</a>
       </div>
       <div class="activity-list" id="activityList"></div>
     </div>
@@ -1399,6 +1371,8 @@ function renderEverything() {
   renderAlertList();
   renderTable();
   renderActivityFeed();
+  renderStatusDistribution();
+  renderFailedSections();
 }
 
 // KPI tile recompute from real data
@@ -1875,10 +1849,20 @@ function timeAgoText(date) {
   return date.toLocaleDateString('en-US', { month:'short', day:'numeric' });
 }
 
+// State: whether the Recent Activity panel is in "show all" mode (vs. just top 10)
+let _activityShowAll = false;
+
+function toggleActivityFullLog() {
+  _activityShowAll = !_activityShowAll;
+  const link = document.getElementById('activityToggleLink');
+  if (link) link.textContent = _activityShowAll ? '← Show less' : 'Full log →';
+  renderActivityFeed();
+}
+
 function renderActivityFeed() {
   activityList.innerHTML = '';
 
-  // Collect all submissions across all locations, sort newest first, take top 10
+  // Collect all submissions across all locations, sort newest first
   const allSubs = [];
   LOCATIONS.forEach(loc => {
     (loc._allSubs || []).forEach(s => {
@@ -1889,7 +1873,14 @@ function renderActivityFeed() {
     new Date(b.sub.SubmittedAt || b.sub.Created) -
     new Date(a.sub.SubmittedAt || a.sub.Created)
   );
-  const recent = allSubs.slice(0, 10);
+  // In compact mode: top 10. In full-log mode: all of them.
+  const recent = _activityShowAll ? allSubs : allSubs.slice(0, 10);
+
+  // Hide the "Full log" link if there's nothing more than the 10 already shown
+  const toggleLink = document.getElementById('activityToggleLink');
+  if (toggleLink) {
+    toggleLink.style.display = allSubs.length > 10 ? '' : 'none';
+  }
 
   if (recent.length === 0) {
     activityList.innerHTML = `
@@ -1939,6 +1930,120 @@ function renderActivityFeed() {
     div.onclick = () => openModal(loc);
     activityList.appendChild(div);
   });
+}
+
+// ---------- PORTFOLIO STATUS DISTRIBUTION (real-data widget) ----------
+// Four stat cards showing how the portfolio is split: Healthy / Watch / Critical / Not Inspected.
+// Each card has a count, a label, and a colored top bar for instant visual recognition.
+function renderStatusDistribution() {
+  const container = document.getElementById('statusDistCards');
+  const sub = document.getElementById('statusDistSub');
+  if (!container) return;
+
+  const total = LOCATIONS.length;
+  const inspected = LOCATIONS.filter(l => l.inspected);
+  const healthy = inspected.filter(l => l.status === 'healthy').length;
+  const watch = inspected.filter(l => l.status === 'watch').length;
+  const critical = inspected.filter(l => l.status === 'critical').length;
+  const notInspected = total - inspected.length;
+
+  if (sub) {
+    const pct = total > 0 ? Math.round((inspected.length / total) * 100) : 0;
+    sub.textContent = `${inspected.length} of ${total} inspected · ${pct}% coverage`;
+  }
+
+  // Bar fills the card from left → right proportional to the largest category
+  // so the relative sizes are visually obvious even with small counts.
+  const max = Math.max(healthy, watch, critical, notInspected, 1);
+  const cards = [
+    { label: 'Healthy',       count: healthy,      color: 'var(--healthy)',  soft: 'var(--healthy-soft)' },
+    { label: 'Watch',         count: watch,        color: 'var(--watch)',    soft: 'var(--watch-soft)' },
+    { label: 'Critical',      count: critical,     color: 'var(--critical)', soft: 'var(--critical-soft)' },
+    { label: 'Not Inspected', count: notInspected, color: 'var(--ink-faint)', soft: 'var(--bg)' },
+  ];
+
+  container.innerHTML = cards.map(c => {
+    const pctFill = Math.round((c.count / max) * 100);
+    return `
+      <div style="border:1px solid var(--border); border-radius:8px; padding:12px 14px; background:white; position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:${c.color};"></div>
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1; color:var(--s4-navy); margin-top:6px;">${c.count}</div>
+        <div style="font-size:10px; font-weight:700; color:var(--ink-soft); letter-spacing:0.08em; text-transform:uppercase; margin-top:6px;">${c.label}</div>
+        <div style="height:4px; background:var(--bg); border-radius:2px; margin-top:8px; overflow:hidden;">
+          <div style="height:100%; width:${pctFill}%; background:${c.color}; opacity:0.6;"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ---------- FAILED CHECKPOINTS BY SECTION (real-data widget) ----------
+// Horizontal bar chart showing which sections fail most often across all inspections.
+// Pulls data from BulletDetailsJSON on each reformer result row.
+function renderFailedSections() {
+  const container = document.getElementById('failedSectionsBars');
+  const sub = document.getElementById('failedSectionsSub');
+  if (!container) return;
+
+  // Tally failures by section name across all inspections
+  const counts = {};
+  let totalFails = 0;
+  let totalReformers = 0;
+
+  LOCATIONS.forEach(loc => {
+    const rows = loc._latestReformerRows || [];
+    rows.forEach(rr => {
+      totalReformers++;
+      let parsed = null;
+      const raw = (typeof safeStr === 'function') ? safeStr(rr.BulletDetailsJSON) : (rr.BulletDetailsJSON || '');
+      if (raw) {
+        try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+      }
+      if (parsed && Array.isArray(parsed.sections)) {
+        parsed.sections.forEach(sec => {
+          if (!Array.isArray(sec.bullets)) return;
+          const failCount = sec.bullets.filter(b => (b.result || '').toLowerCase() === 'fail').length;
+          if (failCount > 0) {
+            const name = sec.name || ('Section ' + (sec.id || '?'));
+            counts[name] = (counts[name] || 0) + failCount;
+            totalFails += failCount;
+          }
+        });
+      }
+    });
+  });
+
+  // Empty state
+  if (totalFails === 0) {
+    if (sub) sub.textContent = totalReformers > 0 ? `${totalReformers} reformers inspected` : '';
+    container.innerHTML = `
+      <div style="padding:18px 4px; text-align:center; color:var(--ink-soft); font-size:13px;">
+        ${totalReformers === 0
+          ? 'No inspection data yet.<br/><span style="font-size:11px; color:var(--ink-faint);">Section-level failure breakdown will appear here as inspections come in.</span>'
+          : 'No failed checkpoints recorded yet — everything is passing.'}
+      </div>
+    `;
+    return;
+  }
+
+  if (sub) sub.textContent = `${totalFails} failed checkpoints across ${totalReformers} reformers`;
+
+  // Sort descending by count; cap at top 7 for visual cleanliness
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 7);
+  const max = sorted[0][1];
+
+  container.innerHTML = sorted.map(([name, count]) => {
+    const pct = Math.round((count / max) * 100);
+    return `
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+        <div style="flex:0 0 140px; font-size:12px; color:var(--ink); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${name}">${name}</div>
+        <div style="flex:1; height:14px; background:var(--bg); border-radius:3px; overflow:hidden; position:relative;">
+          <div style="height:100%; width:${pct}%; background:linear-gradient(90deg, var(--s4-red), #E04050); border-radius:3px;"></div>
+        </div>
+        <div style="flex:0 0 28px; text-align:right; font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:var(--s4-navy);">${count}</div>
+      </div>
+    `;
+  }).join('');
 }
 
 // ---------- DRILL-IN MODAL ----------
