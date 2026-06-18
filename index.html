@@ -1424,7 +1424,13 @@ async function loadAndRender() {
   }
 
   try {
-    const res = await fetch(DATA_API_URL);
+    // Append a cache-buster query param so the browser can't serve a stale
+    // response (important after delete/send-report actions where we expect fresh data).
+    const cacheBuster = '&_cb=' + Date.now();
+    const res = await fetch(DATA_API_URL + cacheBuster, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     console.log('[Dashboard] Live data received:', data);
@@ -2229,6 +2235,24 @@ function openModal(loc) {
         ` : ''}
       </div>
       ` : ''}
+
+      ${loc.lastInspected ? `
+      <!-- Delete Inspection (destructive action — kept visually separate and lower-key) -->
+      <div class="modal-section-title" style="margin-top:32px; color:var(--ink-soft);">Danger Zone</div>
+      <div style="padding:14px 18px; border:1px solid #f1c5c8; border-radius:10px; background:#fdf5f5; display:flex; align-items:center; gap:14px;">
+        <div style="flex:1;">
+          <div style="font-weight:600; color:var(--critical, #C81E28); font-size:13px;">Delete this inspection</div>
+          <div style="font-size:12px; color:var(--ink-soft); margin-top:3px;">
+            Removes the latest inspection from the dashboard. Use this if the submission needs to be re-done (e.g., bad photos, wrong information). The record stays in SharePoint as an audit trail but no longer appears here.
+          </div>
+        </div>
+        <button
+          onclick="deleteInspection('${loc.id}', this)"
+          style="padding:8px 14px; background:white; color:var(--critical, #C81E28); border:1.5px solid var(--critical, #C81E28); border-radius:8px; font-family:inherit; font-weight:600; font-size:13px; cursor:pointer; white-space:nowrap;"
+          title="Mark this inspection as deleted — it will no longer appear on the dashboard"
+        >Delete Inspection</button>
+      </div>
+      ` : ''}
     </div>
   `;
 
@@ -2408,6 +2432,103 @@ function exportCriticalAlertsCSV() {
 // recipients from SharePoint columns when going live).
 
 const SEND_REPORT_FLOW_URL = 'https://defaultfeb10a4d25d048849262796ba1852b.f6.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/0495e19d043142f792c9091601164d90/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=L6-OZnVSX6U_kITCPedvdLQs0YEmP-hcUaV-FnrHev8';
+
+// ---------- DELETE INSPECTION ----------
+// Soft-deletes the latest submission for a location: SharePoint row stays put
+// (audit trail), but Deleted=Yes and DeletedAt=now() so the Get Data flow's
+// "Deleted ne 1" filter excludes it from the dashboard. Used by the vendor when
+// they want to reject an inspection and have it re-done.
+const DELETE_FLOW_URL = 'https://defaultfeb10a4d25d048849262796ba1852b.f6.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/877f979c76c6480b946c511a8cc2be33/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=mngrGXq_1QGf08sYAqSgWVjEqHEWEwDu_QhlmWDVc2s';
+
+async function deleteInspection(locationId, btnEl) {
+  const loc = LOCATIONS.find(l => l.id === locationId);
+  if (!loc || !loc._latest) {
+    alert('No inspection data available for this location.');
+    return;
+  }
+
+  const submissionId = (typeof safeStr === 'function')
+    ? (safeStr(loc._latest.SubmissionID) || safeStr(loc._latest.Title))
+    : (loc._latest.SubmissionID || loc._latest.Title || '');
+
+  if (!submissionId) {
+    alert('Could not determine the submission ID for this inspection.');
+    return;
+  }
+
+  // Two-step confirmation: this is destructive (from the dashboard's point of
+  // view) and we don't want it triggered by an accidental click.
+  if (!confirm(`Delete the latest inspection for ${loc.studio}?\n\nSubmission: ${submissionId}\nDate: ${loc.lastInspected ? formatDate(loc.lastInspected) : '—'}\n\nThis will hide it from the dashboard. The data stays in SharePoint as an audit trail. Continue?`)) {
+    return;
+  }
+
+  const origText = btnEl ? btnEl.textContent : null;
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Deleting...'; }
+
+  try {
+    const resp = await fetch(DELETE_FLOW_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ submissionId }),
+    });
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      throw new Error(`Flow returned ${resp.status}: ${txt.slice(0, 200)}`);
+    }
+
+    // Optimistic local update — remove the latest submission from the location.
+    // We rebuild the location's state as if this submission never existed.
+    // If there are older non-deleted submissions, fall back to those.
+    const allSubs = (loc._allSubs || []).filter(s => {
+      const sid = (typeof safeStr === 'function') ? (safeStr(s.SubmissionID) || safeStr(s.Title)) : (s.SubmissionID || s.Title || '');
+      return sid !== submissionId;
+    });
+
+    if (allSubs.length > 0) {
+      // Fall back to the next-most-recent submission. Easier UX: just reload
+      // from SharePoint so all derived fields are correct.
+      console.log('[Delete] Submission removed; older submissions remain. Reloading dashboard data...');
+    } else {
+      // No remaining submissions — this location goes back to "Not Inspected" state.
+      loc.inspected = false;
+      loc.status = null;
+      loc.score = null;
+      loc.lastInspected = null;
+      loc.daysAgo = null;
+      loc.reformersInspected = null;
+      loc.failedItems = null;
+      loc.reportSent = false;
+      loc.reportSentAt = null;
+      loc._latest = null;
+      loc._allSubs = [];
+      loc._latestReformerRows = [];
+      loc._latestPhotos = [];
+    }
+
+    // Close the modal — the location has been altered, viewing stale data is confusing
+    if (typeof closeModal === 'function') {
+      document.getElementById('modalOverlay')?.classList.remove('show');
+    }
+
+    // Trigger a fresh load from SharePoint to rebuild ALL derived fields cleanly
+    // (KPIs, status distribution, failed sections, etc.). This is the safest
+    // option — instead of manually patching every place that derived from this
+    // submission, just re-pull.
+    if (typeof loadAndRender === 'function') {
+      await loadAndRender();
+    } else {
+      // Fallback: just re-render the table
+      if (typeof renderTable === 'function') renderTable();
+      if (typeof renderStatusDistribution === 'function') renderStatusDistribution();
+      if (typeof renderFailedSections === 'function') renderFailedSections();
+      if (typeof renderActivityFeed === 'function') renderActivityFeed();
+    }
+  } catch (err) {
+    console.error('[Delete] Failed:', err);
+    alert('Could not delete inspection: ' + (err.message || err));
+    if (btnEl) { btnEl.textContent = origText || 'Delete Inspection'; btnEl.disabled = false; }
+  }
+}
 
 // ---------- MANUAL "MARK SENT" OVERRIDE ----------
 // For cases where the report was distributed via another channel (handed off
