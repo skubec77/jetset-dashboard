@@ -2238,12 +2238,12 @@ function openModal(loc) {
 
       ${loc.lastInspected ? `
       <!-- Delete Inspection (destructive action — kept visually separate and lower-key) -->
-      <div class="modal-section-title" style="margin-top:32px; color:var(--ink-soft);">Danger Zone</div>
+      <div class="modal-section-title" style="margin-top:32px; color:var(--ink-soft);">Admin Only</div>
       <div style="padding:14px 18px; border:1px solid #f1c5c8; border-radius:10px; background:#fdf5f5; display:flex; align-items:center; gap:14px;">
         <div style="flex:1;">
           <div style="font-weight:600; color:var(--critical, #C81E28); font-size:13px;">Delete this inspection</div>
           <div style="font-size:12px; color:var(--ink-soft); margin-top:3px;">
-            Removes the latest inspection from the dashboard. Use this if the submission needs to be re-done (e.g., bad photos, wrong information). The record stays in SharePoint as an audit trail but no longer appears here.
+            Removes the latest inspection from the dashboard. Use this if the submission needs to be re-done (e.g., bad photos, wrong information). The record stays in the database as an audit trail but no longer appears here.
           </div>
         </div>
         <button
@@ -2458,7 +2458,7 @@ async function deleteInspection(locationId, btnEl) {
 
   // Two-step confirmation: this is destructive (from the dashboard's point of
   // view) and we don't want it triggered by an accidental click.
-  if (!confirm(`Delete the latest inspection for ${loc.studio}?\n\nSubmission: ${submissionId}\nDate: ${loc.lastInspected ? formatDate(loc.lastInspected) : '—'}\n\nThis will hide it from the dashboard. The data stays in SharePoint as an audit trail. Continue?`)) {
+  if (!confirm(`Delete the latest inspection for ${loc.studio}?\n\nSubmission: ${submissionId}\nDate: ${loc.lastInspected ? formatDate(loc.lastInspected) : '—'}\n\nThis will hide it from the dashboard. The data stays in the database as an audit trail. Continue?`)) {
     return;
   }
 
