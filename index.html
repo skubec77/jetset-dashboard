@@ -1554,12 +1554,14 @@ function initLeafletMap() {
     attributionControl: true,
   });
 
-  // OpenStreetMap tiles — free, no API key ever, no watermark risk.
-  // Switched from Carto's Positron tiles which began requiring an API key
-  // and overlaying a watermark on unauthenticated usage.
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 19,
+  // Stadia Maps — Alidade Smooth style (clean minimal light, similar to
+  // the old Carto Positron look). Domain-authenticated for
+  // red-flower-044f39710.7.azurestaticapps.net via Stadia's dashboard —
+  // no API key in the code, tile requests validated by Referer header.
+  // Free tier: 200k tiles/month.
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 20,
   }).addTo(leafletMap);
 }
 
