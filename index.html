@@ -7,8 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- D3 v7 + topojson-client for SVG US map. No API keys, no watermarks,
+       no external tile servers. Runtime cost: two small library loads + one
+       fetch of the US states TopoJSON (~120KB gzipped) from jsDelivr CDN. -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
   <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://unpkg.com/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -272,68 +275,68 @@
     position: relative;
     overflow: hidden;
   }
-  #leafletMap {
+  #usMap {
     width: 100%;
     height: 100%;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
     background: #f4f6fa;
+    display: block;
   }
-  /* Leaflet marker custom styling */
-  .jetset-marker {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  /* State polygons — muted so pins pop */
+  #usMap .state {
+    fill: #e6ebf3;
+    stroke: #c9d1de;
+    stroke-width: 0.5;
+    stroke-linejoin: round;
+  }
+  #usMap .state-mesh {
+    fill: none;
+    stroke: #c9d1de;
+    stroke-width: 0.5;
+    stroke-linejoin: round;
+    pointer-events: none;
+  }
+  /* Marker dots (SVG circles) */
+  #usMap .marker-dot {
+    stroke: white;
+    stroke-width: 1.5;
     cursor: pointer;
-    transition: transform 0.12s;
+    transition: r 0.12s;
   }
-  .jetset-marker:hover { transform: scale(1.4); }
-  .jetset-marker.healthy { background: #00a86b; }
-  .jetset-marker.watch { background: #f4a300; }
-  .jetset-marker.critical { background: #C81E28; }
-  .jetset-marker.notinspected { background: #cbd0db; }
-  .jetset-marker-pulse {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    border: 2px solid white;
-    cursor: pointer;
-    background: #C81E28;
-    position: relative;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  #usMap .marker-dot:hover { r: 8; }
+  #usMap .marker-dot.healthy { fill: #00a86b; }
+  #usMap .marker-dot.watch { fill: #f4a300; }
+  #usMap .marker-dot.critical { fill: #C81E28; }
+  #usMap .marker-dot.notinspected { fill: #cbd0db; }
+  /* Pulsing ring on critical (unacknowledged) markers */
+  #usMap .marker-pulse-ring {
+    fill: none;
+    stroke: rgba(200, 30, 40, 0.6);
+    stroke-width: 2;
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: svg-pulse 1.8s infinite ease-out;
   }
-  /* The pulsing ring is a separate ::before pseudo-element so it can expand
-     beyond the marker without being clipped by Leaflet's icon container */
-  .jetset-marker-pulse::before {
-    content: '';
+  @keyframes svg-pulse {
+    0%   { transform: scale(1);   opacity: 0.8; }
+    70%  { transform: scale(3);   opacity: 0; }
+    100% { transform: scale(3);   opacity: 0; }
+  }
+  /* Tooltip that follows the mouse on marker hover */
+  #mapTooltip {
     position: absolute;
-    top: 50%; left: 50%;
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: rgba(200, 30, 40, 0.55);
-    transform: translate(-50%, -50%);
-    animation: pulse-marker 1.8s infinite ease-out;
-    z-index: -1;
-  }
-  @keyframes pulse-marker {
-    0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.7; }
-    70%  { transform: translate(-50%, -50%) scale(3);   opacity: 0; }
-    100% { transform: translate(-50%, -50%) scale(3);   opacity: 0; }
-  }
-  /* Ensure the pulse ring isn't clipped by Leaflet's icon container */
-  .leaflet-marker-icon { overflow: visible !important; }
-  /* Leaflet popup branding */
-  .leaflet-popup-content-wrapper {
+    display: none;
+    background: white;
     border-radius: 10px;
     box-shadow: 0 6px 24px rgba(10,20,40,0.18);
-  }
-  .leaflet-popup-content {
-    margin: 14px 18px;
-    font-family: 'Inter', sans-serif;
+    padding: 12px 16px;
     font-size: 13px;
     line-height: 1.5;
+    pointer-events: auto;
+    z-index: 500;
+    max-width: 260px;
+    font-family: 'Inter', sans-serif;
   }
-  .leaflet-popup-content strong { color: var(--s4-navy); font-weight: 700; font-size: 14px; }
+  #mapTooltip strong { color: var(--s4-navy); font-weight: 700; font-size: 14px; display: block; }
   .map-popup-score {
     font-family: 'JetBrains Mono', monospace;
     font-weight: 700;
@@ -881,7 +884,8 @@
         <a class="panel-action" href="javascript:void(0)" onclick="scrollToLocationsTable()">View as list →</a>
       </div>
       <div class="map-wrap">
-        <div id="leafletMap"></div>
+        <svg id="usMap" viewBox="0 0 960 600" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="mapTooltip"></div>
       </div>
       <div class="map-legend">
         <div class="map-legend-item"><span class="map-legend-dot" style="background:var(--healthy);"></span> Healthy (90%+)</div>
@@ -1536,86 +1540,137 @@ function formatDaysAgo(days) {
   return `${Math.floor(days/7)}w ago`;
 }
 
-// ---------- LEAFLET MAP ----------
-// Real geographic map via Leaflet + OpenStreetMap tiles.
-// Markers placed by actual lat/lng — no projection math, no chance of misalignment.
+// ---------- US MAP (SVG, D3) ----------
+// A static US map rendered as SVG. No tile servers, no API keys, no watermarks.
+// State outlines come from the us-atlas TopoJSON (loaded once from jsDelivr).
+// Location pins are SVG circles projected from lat/lng via d3.geoAlbersUsa.
+// Trade-off vs Leaflet: no zoom/pan, no street-level detail. For a
+// portfolio dashboard showing "where are our locations across the country",
+// that's the right trade — never breaks, works offline once cached, ~zero
+// ongoing dependencies.
 
-let leafletMap = null;
-const markerLayer = { markers: [] };
+let usMapReady = false;         // TopoJSON loaded and states drawn
+let usMapProjection = null;     // d3 projection function used for pins
+let usMapSvg = null;            // cached d3 selection of #usMap
+let usMapPinLayer = null;       // <g> group holding the marker circles
+let usMapPending = false;       // set if renderMapDots is called before map is ready
 
-function initLeafletMap() {
-  if (leafletMap) return; // already initialized
-  // Center on continental US, zoom level shows the whole country
-  leafletMap = L.map('leafletMap', {
-    center: [37.8, -96],
-    zoom: 4,
-    scrollWheelZoom: false, // prevent accidental scroll-zoom while paging
-    zoomControl: true,
-    attributionControl: true,
-  });
+async function initUsMap() {
+  if (usMapReady || usMapPending) return;
+  usMapPending = true;
 
-  // Stadia Maps — Alidade Smooth style (clean minimal light, similar to
-  // the old Carto Positron look). Domain-authenticated for
-  // red-flower-044f39710.7.azurestaticapps.net via Stadia's dashboard —
-  // no API key in the code, tile requests validated by Referer header.
-  // Free tier: 200k tiles/month.
-  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 20,
-  }).addTo(leafletMap);
+  usMapSvg = d3.select('#usMap');
+  const projection = d3.geoAlbersUsa().scale(1200).translate([480, 300]);
+  const path = d3.geoPath(projection);
+  usMapProjection = projection;
+
+  try {
+    const us = await d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json');
+    const states = topojson.feature(us, us.objects.states);
+    const mesh = topojson.mesh(us, us.objects.states, (a, b) => a !== b);
+
+    // Draw state polygons + interior borders in a background <g>
+    const bgLayer = usMapSvg.append('g').attr('class', 'states-bg');
+    bgLayer.selectAll('path.state')
+      .data(states.features)
+      .join('path')
+      .attr('class', 'state')
+      .attr('d', path);
+    bgLayer.append('path')
+      .attr('class', 'state-mesh')
+      .attr('d', path(mesh));
+
+    // Reserve a pin layer so pins always render ABOVE state fills
+    usMapPinLayer = usMapSvg.append('g').attr('class', 'pins');
+
+    usMapReady = true;
+    renderMapDots();  // now paint whatever's in LOCATIONS
+  } catch (err) {
+    console.error('[Dashboard] Failed to load US map data:', err);
+    // If the TopoJSON fetch fails, at least show the pins on a plain background
+    usMapPinLayer = usMapSvg.append('g').attr('class', 'pins');
+    usMapReady = true;
+    renderMapDots();
+  }
 }
 
 function renderMapDots() {
-  initLeafletMap();
+  // Kick off map init on first call; renderMapDots will be re-invoked
+  // automatically from initUsMap once the TopoJSON has loaded.
+  if (!usMapReady) {
+    initUsMap();
+    return;
+  }
 
-  // Clear any existing markers
-  markerLayer.markers.forEach(m => leafletMap.removeLayer(m));
-  markerLayer.markers = [];
+  // Clear any existing pins before repainting
+  usMapPinLayer.selectAll('*').remove();
+
+  const tooltip = document.getElementById('mapTooltip');
+  const wrap = document.querySelector('.map-wrap');
 
   LOCATIONS.forEach(loc => {
     if (loc.lat == null || loc.lng == null) return;
+
+    const projected = usMapProjection([loc.lng, loc.lat]);
+    if (!projected) return; // outside continental US bounds — skip
+    const [cx, cy] = projected;
+
     const status = loc.status || 'notinspected';
     const isCritical = status === 'critical';
-    // Check if this critical alert has been acknowledged — if so, don't pulse
     const isAcknowledged = isCritical && typeof getAckMap === 'function' && !!getAckMap()[alertFingerprint(loc)];
-    const cls = (isCritical && !isAcknowledged) ? 'jetset-marker-pulse' : `jetset-marker ${status}`;
+    const showPulse = isCritical && !isAcknowledged;
 
-    const icon = L.divIcon({
-      className: '', // suppress Leaflet's default 'leaflet-div-icon'
-      html: `<div class="${cls}"></div>`,
-      iconSize: [14, 14],
-      iconAnchor: [7, 7],
-      popupAnchor: [0, -8],
-    });
+    // Pulse ring FIRST so it sits behind the solid dot
+    if (showPulse) {
+      usMapPinLayer.append('circle')
+        .attr('class', 'marker-pulse-ring')
+        .attr('cx', cx).attr('cy', cy).attr('r', 5);
+    }
 
-    const marker = L.marker([loc.lat, loc.lng], { icon }).addTo(leafletMap);
+    const dot = usMapPinLayer.append('circle')
+      .attr('class', `marker-dot ${status}`)
+      .attr('cx', cx).attr('cy', cy).attr('r', 5)
+      .attr('data-loc-id', loc.id);
 
-    const statusBg = {
-      healthy: 'background:#e8f7ef; color:#00754a;',
-      watch: 'background:#fff7e1; color:#946000;',
-      critical: 'background:#fef2f3; color:#C81E28;',
-      notinspected: 'background:#f0f2f7; color:#5a6275;'
-    }[status];
-
-    const scoreLine = loc.inspected
-      ? `<div class="map-popup-score" style="${statusBg}">Score ${loc.score}% · ${statusLabel(status)}</div>`
-      : `<div class="map-popup-score" style="${statusBg}">Not yet inspected</div>`;
-
-    marker.bindPopup(`
-      <strong>${loc.studio} — ${loc.city}, ${loc.state}</strong>
-      <div style="color:#5a6275; font-size:11px; font-family:'JetBrains Mono',monospace; margin-top:2px;">${loc.id}</div>
-      ${scoreLine}
-      <div style="margin-top:8px;">
-        <a href="javascript:void(0)" onclick="openModal(LOCATIONS.find(l=>l.id==='${loc.id}'))" style="color:var(--s4-blue); font-weight:600; font-size:12px;">View details →</a>
-      </div>
-    `, { closeButton: true, autoPan: true });
-
-    markerLayer.markers.push(marker);
+    // Hover/click: show tooltip with the same content the Leaflet popup had
+    dot.on('mouseenter', (evt) => showMapTooltip(loc, evt, tooltip, wrap));
+    dot.on('mousemove', (evt) => positionMapTooltip(evt, tooltip, wrap));
+    dot.on('mouseleave', () => { tooltip.style.display = 'none'; });
+    dot.on('click', () => openModal(LOCATIONS.find(l => l.id === loc.id)));
   });
+}
 
-  // Slight delay then invalidate size — fixes a Leaflet quirk where the map
-  // sometimes renders blank if its container animates in or starts hidden
-  setTimeout(() => leafletMap && leafletMap.invalidateSize(), 100);
+function showMapTooltip(loc, evt, tooltip, wrap) {
+  const status = loc.status || 'notinspected';
+  const statusBg = {
+    healthy: 'background:#e8f7ef; color:#00754a;',
+    watch: 'background:#fff7e1; color:#946000;',
+    critical: 'background:#fef2f3; color:#C81E28;',
+    notinspected: 'background:#f0f2f7; color:#5a6275;'
+  }[status];
+  const scoreLine = loc.inspected
+    ? `<div class="map-popup-score" style="${statusBg}">Score ${loc.score}% · ${statusLabel(status)}</div>`
+    : `<div class="map-popup-score" style="${statusBg}">Not yet inspected</div>`;
+  tooltip.innerHTML = `
+    <strong>${loc.studio} — ${loc.city}, ${loc.state}</strong>
+    <div style="color:#5a6275; font-size:11px; font-family:'JetBrains Mono',monospace; margin-top:2px;">${loc.id}</div>
+    ${scoreLine}
+    <div style="margin-top:8px; font-size:12px; color:var(--s4-blue); font-weight:600;">Click for details →</div>
+  `;
+  tooltip.style.display = 'block';
+  positionMapTooltip(evt, tooltip, wrap);
+}
+
+function positionMapTooltip(evt, tooltip, wrap) {
+  const wrapRect = wrap.getBoundingClientRect();
+  let x = evt.clientX - wrapRect.left + 12;
+  let y = evt.clientY - wrapRect.top + 12;
+  // Keep tooltip inside the wrap
+  const ttRect = tooltip.getBoundingClientRect();
+  if (x + ttRect.width > wrapRect.width) x = evt.clientX - wrapRect.left - ttRect.width - 12;
+  if (y + ttRect.height > wrapRect.height) y = evt.clientY - wrapRect.top - ttRect.height - 12;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
 }
 
 // ---------- CRITICAL ALERTS ----------
@@ -2057,10 +2112,9 @@ function renderFailedSections() {
 
 // ---------- DRILL-IN MODAL ----------
 function openModal(loc) {
-  // Close any open Leaflet popup so it doesn't linger behind the modal
-  if (typeof leafletMap !== 'undefined' && leafletMap) {
-    leafletMap.closePopup();
-  }
+  // Hide any open map tooltip so it doesn't linger behind the modal
+  const _tt = document.getElementById('mapTooltip');
+  if (_tt) _tt.style.display = 'none';
   const overlay = document.getElementById('modalOverlay');
   const body = document.getElementById('modalBody');
 
